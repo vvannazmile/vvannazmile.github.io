@@ -607,6 +607,10 @@
     stopPoll();
     spot = null;
     stepTick = null;
+    // This function used to read `T` without declaring it (the only `T` in
+    // scope belonged to afterProfileNeedsTicket), so drawing the ticket form
+    // threw "T is not defined" and new people never got past "One sec…".
+    const T = window.WS_Ticket || {};
     const draft = stepCreateTicket.draft || {};
     const opts  = (list, pick) => list.map((v) => `<option value="${v}"${v === pick ? " selected" : ""}>${v}</option>`).join("");
     setCard({

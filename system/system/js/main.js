@@ -3187,7 +3187,7 @@ window.addEventListener("load", () => {
       document.addEventListener("ws:tutorial-done", () => setTimeout(announce, 800), { once: true });
     } else setTimeout(announce, 1500);
   }
-  // The site root, from this script's URL (index.html and pages/main.html alike).
+  // The site root, from this script's URL (the root index.html).
   const _siteRoot = () => new URL("../../", document.querySelector("script[src*='js/main.js']")?.src || location.href);
 
   // A load from the data cache skips the asset fetch, which is where the

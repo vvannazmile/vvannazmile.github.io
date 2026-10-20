@@ -3,68 +3,41 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script src="system/js/desktop.js"></script>
-<link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/favicon.png"/>
+<link id="favicon" rel="icon" href="assets/favicons/favicon.png"/>
 <title>WannaSmile4Evr</title>
 
-<!-- Asset data comes from Apps Script, which redirects to
-     script.googleusercontent.com — open both connections right away. -->
 <link rel="preconnect" href="https://script.google.com" crossorigin />
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
-<!-- Images, themes and the loader gif come from raw.githubusercontent.com; the
-     CDN hosts serve Shoelace and Font Awesome. Warm those connections up too. -->
-<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
-<!-- Icons (main.js would add this same link later): start it now, without blocking render. -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" /></noscript>
-
 <!-- Word filter (nickname/ticket checks): no DOM needed, so it loads here and
      starts fetching its list straight away. See wordfilter.js. -->
 <script src="system/js/endpoints.js"></script>
-<script src="system/js/wordfilter.js"></script>
-
 <script>
-// Start the asset fetch now, from the <head>, instead of waiting for every
-// stylesheet, CDN script and main.js to download and DOMContentLoaded to
-// fire. main.js's loadAssets() picks this promise up (once) if the URL
-// matches, so the JSON is usually already parsed by the time it needs it.
+// Starts the asset request before the rest of the page has downloaded (main.js
+// picks it up as window.__wsAssetsPrefetch). Only for a browser that already
+// holds an approved ticket: a new visitor would just be refused ("missing"),
+// and with the data cache on the request would never be used.
 (function () {
-  window.WS_SHEET_URL = window.WS_ENDPOINTS.data;   // endpoints.js
   try {
-    // Only for a browser whose access ticket is already approved (see
-    // ticket.js); everyone else waits at the ticket gate, and the backend
-    // would refuse the request anyway.
-    var ticket = localStorage.getItem("ws_ticket_id");
-    if (!ticket || localStorage.getItem("ws_ticket_status") !== "approved") { window.__wsAssetsPrefetch = null; return; }
-    // Data cache on with a saved copy (datacache.js): no request at all.
-    if (localStorage.getItem("ws_data_cache_on") === "1" && localStorage.getItem("ws_cache_assets")) { window.__wsAssetsPrefetch = null; return; }
-    var url = window.WS_SHEET_URL;
-    var key = localStorage.getItem("ws_ticket_key");
-    var p = fetch(url + (url.indexOf("?") === -1 ? "?" : "&") + "ticket=" + encodeURIComponent(ticket) + (key ? "&key=" + encodeURIComponent(key) : "") + "&_=" + Date.now(), { cache: "no-store" })
-      .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
-      });
-    p.catch(function () {}); // handled by loadAssets; silences "unhandled rejection" if unused
+    var L = localStorage, id = L.getItem("ws_ticket_id"), key = L.getItem("ws_ticket_key");
+    if (L.getItem("ws_ticket_status") !== "approved" || !id || !key || L.getItem("ws_data_cache_on") === "1") return;
+    var url = window.WS_ENDPOINTS.data;
+    var p = fetch(url + "?ticket=" + encodeURIComponent(id) + "&key=" + encodeURIComponent(key) + "&_=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+    p.catch(function () {});
     window.__wsAssetsPrefetch = { url: url, promise: p };
-  } catch (_) { window.__wsAssetsPrefetch = null; }
+  } catch (_) {}
 })();
 </script>
+<script src="system/js/wordfilter.js"></script>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" /></noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" />
 <!-- Shoelace components (sl-alert for achievement pop-ups, credits.js). -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/shoelace-autoloader.js"></script>
 <link rel="stylesheet" href="system/css/main.css" />
 <link rel="stylesheet" href="system/css/widgets.css" />
 <link rel="stylesheet" href="system/css/shortcuts.css" />
-<link rel="stylesheet" href="system/css/daily.css" />
-<link rel="stylesheet" href="system/css/rusure.css" />
-<link rel="stylesheet" href="system/css/refer.css" />
-<link rel="stylesheet" href="system/css/tutorial.css" />
 <link rel="stylesheet" href="system/css/profile.css" />
+<link rel="stylesheet" href="system/css/tutorial.css" />
 <link rel="stylesheet" href="system/css/updates.css" />
 
 <script>
@@ -73,6 +46,10 @@
 // of what the user actually last used. Falls back to redux's own images on
 // a first-ever visit, when nothing has been cached yet.
 (function () {
+  // No approved ticket yet = the ticket/onboarding screen is up and the page
+  // behind it isn't drawn, so these images would sit unused and the browser
+  // warns "preloaded but not used". Preload only for people past the gate.
+  try { if (localStorage.getItem("ws_ticket_status") !== "approved") return; } catch (_) { return; }
   var FALLBACK = [
     "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/headerBg.png",
     "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/quoteBg.png",
@@ -84,13 +61,6 @@
     v = (v == null ? "" : String(v)).trim();
     return /^(https?:)?\/\//i.test(v) || v.indexOf("data:") === 0;
   }
-
-  // Same local fallback as themify.js's _localizeSiteUrl: off the live host,
-  // our own …github.io./assets/… URLs become this checkout's copy (this page
-  // sits at the site root, so the bare path is enough).
-  var LIVE_SITE_RE = /^https?:\/\/wannasmile4evr\.github\.io\.?\//i;
-  var onLiveSite   = /^wannasmile4evr\.github\.io\.?$/i.test(location.hostname);
-  function localize(v) { return onLiveSite ? v : String(v).trim().replace(LIVE_SITE_RE, ""); }
 
   var urls = null;
   try {
@@ -104,7 +74,7 @@
     var link = document.createElement("link");
     link.rel  = "preload";
     link.as   = "image";
-    link.href = localize(window.toMediabase(href));
+    link.href = window.toMediabase(href);
     document.head.appendChild(link);
   });
 })();
@@ -114,6 +84,10 @@
 // pack the user actually has active instead of always fetching redux's and
 // letting it sit there until the real one swaps in.
 (function () {
+  // No approved ticket yet = the ticket/onboarding screen is up and the page
+  // behind it isn't drawn, so these images would sit unused and the browser
+  // warns "preloaded but not used". Preload only for people past the gate.
+  try { if (localStorage.getItem("ws_ticket_status") !== "approved") return; } catch (_) { return; }
   var FALLBACK = ["https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/gif-packs/redux/loading.gif", "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/gif-packs/redux/loaded.gif"];
 
   var urls = null, mineActive = false;
@@ -145,6 +119,7 @@
 })();
 </script>
 
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" rel="stylesheet">
 </head>
 
 <body class="ws-loading">
@@ -153,7 +128,7 @@
 <div id="topBar">
   <header>
     <nav class="nav-links">
-      <a href="." target="_blank">Home</a>
+      <a href="index.html" target="_blank">Home</a>
       <a href="system/pages/discovery/index.html" target="_blank">Discovery</a>
       <a href="system/pages/settings/index.html" target="_blank">Settings</a>
       <a href="https://padlet.com/ankomstudios/wannasmile4evr-s023ilquhanqla56127i" target="_blank">Suggestions</a>
@@ -161,46 +136,34 @@
       <!-- <a href="#" title="Coming soon">Ads and Partnerships</a> -->
       <div class="pages-anchor">
         <button class="arrowleft" onclick="prevPage()">
-          <img src="https://ws.ankomstudios.com/images/header-arrows/left-arrow.png" />
+          <img src="assets/images/header-arrows/left-arrow.png" />
         </button>
         <span class="page-indicator">...</span>
         <button class="arrowright" onclick="nextPage()">
-          <img src="https://ws.ankomstudios.com/images/header-arrows/right-arrow.png" />
+          <img src="assets/images/header-arrows/right-arrow.png" />
         </button>
         <a href="system/pages/store/index.html" target="_blank">STORE</a>
-        <a href="system/pages/news/index.html" target="_blank">NEWS</a>
+        <a href="#" title="Coming soon">NEWS</a>
 
         <button class="mute-btn">
-          <img src="https://ws.ankomstudios.com/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
+          <img src="assets/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
         </button>
 
         <button class="Qtype">
-          <img src="https://ws.ankomstudios.com/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
+          <img src="assets/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
         </button>
 
         <button id="nes-btn">
-          <img src="https://ws.ankomstudios.com/images/panic-btn/deny.png" alt="Toggle">
+          <img src="assets/images/panic-btn/deny.png" alt="Toggle">
         </button>
 
 <button id="cloak-btn">
-  <img src="https://ws.ankomstudios.com/images/cloak-btn/cloaked.png" alt="CloakToggle">
+  <img src="assets/images/cloak-btn/cloaked.png" alt="CloakToggle">
 </button>
 
 <button id="fav-btn" title="Show favorites" aria-pressed="false">
-  <img src="https://ws.ankomstudios.com/images/fav-btn/unfav.gif" alt="Favorites toggle">
+  <img src="assets/images/fav-btn/unfav.gif" alt="Favorites toggle">
 </button>
-
-        <button type="button" id="openDailyPicks" class="hdr-icon-btn" title="Daily picks" aria-label="Daily picks">
-          <img src="https://ws.ankomstudios.com/images/icons/daily.png" alt="" />
-        </button>
-
-        <button type="button" id="openShortCuts" class="hdr-icon-btn" title="Shortcuts" aria-label="Keyboard shortcuts">
-          <img src="https://ws.ankomstudios.com/images/icons/shortcuts.png" alt="" />
-        </button>
-
-        <button type="button" id="openDm" class="hdr-icon-btn" title="Chat (DMs)" aria-label="Open WannaChat">
-          <img src="https://ws.ankomstudios.com/images/icons/dm.png" alt="" />
-        </button>
 
       </div>
     </nav>
@@ -231,15 +194,15 @@
 <aside id="dashboardMenu" class="dashboard-menu">
   <div id="dashIdRow" class="dash-id-row">
     <span class="dash-names">
-      <span id="dashNickname" title="Your nickname">Guest</span>
+      <span id="dashNickname" title="Your nickname">Nickname</span>
       <span id="dashUsername" title="Your username (on your ticket)"></span>
     </span>
     <code id="dashTicketId" role="button" tabindex="0">no ticket</code>
   </div>
+  <a href="#" id="openShortCuts">Shortcuts</a>
   <a href="#" id="openUpdates" title="See what's new">Updates &amp; changes</a>
-    <a href="system/pages/credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>
-  <a href="#" id="openRefer" title="Share WannaSmile with a friend">Refer a friend</a>
-    <a href="#" id="openTour" title="Walk through the site again">Tutorial</a>
+  <a href="#" id="openTour" title="Walk through the site again">Tutorial</a>
+  <a href="system/pages/credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>
   <a href="#" id="clearData">Clear My Data</a>
 </aside>
 
@@ -269,9 +232,8 @@
 <footer class="footer">
   <div class="footer-links">
     <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io" target="_blank" rel="noopener noreferrer">source</a>
-    <a href="system/pages/dmca/index.html" target="_blank">DMCA</a>
+    <a href="system/pages/dmca/index.html">DMCA</a>
     <a href="system/pages/discord/index.html" target="_blank">Discord</a>
-    <a href="system/pages/download/index.html" target="_blank" data-ws-browser-only>Desktop app</a>
 <a href="#" id="importData">Import Data</a>
 <a href="#" id="exportData">Export Data</a>
 <a href="#" id="transData">Transfer Data</a>
@@ -411,7 +373,7 @@
 <div id="updatesOverlay" class="upd-overlay" role="dialog" aria-modal="true" aria-labelledby="updatesTitle" hidden>
   <div class="upd-backdrop" id="updatesBackdrop"></div>
   <div id="updatesPanel" tabindex="-1">
-    <img class="upd-banner" src="https://ws.ankomstudios.com/images/pages/release/wannasmile-updated-banner.png" alt="" />
+    <img class="upd-banner" src="assets/images/pages/release/wannasmile-updated-banner.png" alt="" />
     <h2 class="upd-title" id="updatesTitle">Updates n changes!</h2>
     <img class="upd-sticker" src="https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/stickers/MeltGui-pack/cheer.webp" alt="" />
     <ul class="upd-list">
@@ -419,9 +381,6 @@
       <li>DM icon lights up when you have new messages</li>
       <li>Assets re-added on library pages 11&ndash;15</li>
       <li>Auto approve until 300 users!</li>
-      <li>Halloween & autumn expansion update along the way</li>
-      <li>Winter updates coming soon</li>
-      <li>end of wannasmile?</li>
       <li>This pop-up now shows up with every new update</li>
     </ul>
     <div class="upd-actions">
@@ -431,37 +390,33 @@
   </div>
 </div>
 
-<script defer src="system/js/utils.js"></script>
-<script defer src="system/js/datacache.js"></script>
-<script defer src="system/js/paging.js"></script>
-<script defer src="system/js/ticket.js"></script>
-<script defer src="system/js/themify.js"></script>
-<script defer src="system/js/frames.js"></script>
-<script defer src="system/js/wrappers.js"></script>
-<script defer src="system/js/cursors.js"></script>
-<script defer src="system/js/sanitizer.js"></script>
-<script defer src="system/js/profile.js"></script>
-<script defer src="system/js/msgcore.js"></script>
-<script defer src="system/js/settings.js"></script>
-<script defer src="system/js/ui.js"></script>
-<script defer src="system/js/stickers.js"></script>
-<script defer src="system/js/quotes.js"></script>
-<script defer src="system/js/main.js"></script>
-<script defer src="system/js/boom.js"></script>
-<script defer src="system/js/panic.js"></script>
-<script defer src="system/js/shortcuts.js"></script>
-<script defer src="system/js/widgets.js"></script>
-<script defer src="system/js/rusure.js"></script>
-<script defer src="system/js/vendor/qrcode.js"></script>
-<script defer src="system/js/refer.js"></script>
-<script defer src="system/js/updates.js"></script>
-<script defer src="system/js/data.js"></script>
-<script defer src="system/js/gridSettings.js"></script>
-<script defer src="system/js/credits.js"></script>
-<script defer src="system/js/devtools.js"></script>
-<script defer src="system/js/tutorial.js"></script>
-<script defer src="system/js/daily.js"></script>
-<script defer src="system/js/version.js"></script>
+<script src="system/js/utils.js"></script>
+<script src="system/js/datacache.js"></script>
+<script src="system/js/paging.js"></script>
+<script src="system/js/ticket.js"></script>
+<script src="system/js/msgcore.js"></script>
+<script src="system/js/themify.js"></script>
+<script src="system/js/frames.js"></script>
+<script src="system/js/wrappers.js"></script>
+<script src="system/js/cursors.js"></script>
+<script src="system/js/sanitizer.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="system/js/profile.js"></script>
+<script src="system/js/settings.js"></script>
+<script src="system/js/ui.js"></script>
+<script src="system/js/stickers.js"></script>
+<script src="system/js/quotes.js"></script>
+<script src="system/js/main.js"></script>
+<script src="system/js/boom.js"></script>
+<script src="system/js/panic.js"></script>
+<script src="system/js/shortcuts.js"></script>
+<script src="system/js/widgets.js"></script>
+<script src="system/js/data.js"></script>
+<script src="system/js/updates.js"></script>
+<script src="system/js/gridSettings.js"></script>
+<script src="system/js/credits.js"></script>
+<script src="system/js/devtools.js"></script>
+<script src="system/js/tutorial.js"></script>
 
 </body>
 </html>
