@@ -304,7 +304,7 @@ kbd {
    chip so dark line art stays visible whatever the theme. */
 .cursorbox {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(46px, 1fr));   /* up to 8 states, fewer for smaller packs */
   gap: 4px;
   padding: 10px 6px;
   border-radius: 10px;
@@ -1023,11 +1023,13 @@ kbd {
   }
 
   // ── Cursors ──────────────────────────────────────────────────────────
-  // Packs are local (cursors.js lists them), so no fetch or ticket needed.
+  // The pack list comes from the CursorsWS sheet (title + id) through
+  // cursors.js (WSCursors.load, which also caches it and falls back to the
+  // last list). The images follow from the id, and each pack only shows the
+  // states it really has.
   const CURSOR_ON_KEY     = "ws_cursors_enabled";
   const CURSOR_ACTIVE_KEY = "ws_active_cursor";
-  const CURSOR_LABELS     = { normal: "normal", point: "point", click: "click", grab: "grab", deny: "nope" };
-  const cursorCards = [];
+  let cursorCards = [];
 
   function paintCursors() {
     const C = window.WSCursors;
@@ -1048,9 +1050,14 @@ kbd {
     const grid = $("cursorGrid");
     const C = window.WSCursors;
     if (!C) return message(grid, "Cursors couldn't load. Try refreshing.", true);
-    const packs = C.list();
+    skeletons(grid);
+    C.load().then((packs) => drawCursors(grid, C, packs));
+  }
+
+  function drawCursors(grid, C, packs) {
     if (!packs.length) return message(grid, "No cursor packs yet. Check back soon!");
     grid.replaceChildren();
+    cursorCards = [];
 
     packs.forEach(({ id, name }, i) => {
       const card = makeCard(i);
@@ -1062,15 +1069,21 @@ kbd {
       card.querySelector(".item-name").textContent = name;
 
       const box = card.querySelector(".cursorbox");
-      C.states.forEach((state) => {
-        const fig = document.createElement("figure");
-        fig.innerHTML = `<span class="chip"><img alt="" decoding="async" /></span><figcaption></figcaption>`;
-        fig.querySelector("img").alt = `${name} ${CURSOR_LABELS[state]} cursor`;
-        fig.querySelector("figcaption").textContent = CURSOR_LABELS[state];
-        box.appendChild(fig);
-      });
       C.preview(id).then((urls) => {
-        box.querySelectorAll("img").forEach((img, n) => { img.src = urls[C.states[n]]; });
+        // Only the states this pack has; a raw file that fails to load drops out.
+        const have = C.states.filter((state) => urls[state]);
+        if (!have.length) { box.textContent = "No cursor images in this pack yet."; return; }
+        box.replaceChildren(...have.map((state) => {
+          const label = C.labels[state] || state;
+          const fig = document.createElement("figure");
+          fig.innerHTML = `<span class="chip"><img alt="" decoding="async" /></span><figcaption></figcaption>`;
+          const img = fig.querySelector("img");
+          img.alt = `${name} ${label} cursor`;
+          img.addEventListener("error", () => fig.remove(), { once: true });
+          img.src = urls[state];
+          fig.querySelector("figcaption").textContent = label;
+          return fig;
+        }));
       });
 
       const activeBtn = makeBtn("");

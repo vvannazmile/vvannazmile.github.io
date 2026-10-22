@@ -16,7 +16,7 @@
 // can read window.WS_ENDPOINTS.
 //
 window.WS_ENDPOINTS = Object.freeze({
-  data: "https://script.google.com/macros/s/AKfycbzKX8LCOl1g4NZzEmqRv7s0GXK1wrcAFq8AxH4B_RN8dN1LiBKjXiSuGdjj2zQmZzra/exec",
+  data: "https://script.google.com/macros/s/AKfycbzhKAS8JgSge7ej076XLHcrXflPOL4Ng9s9pmqSurJOnd_MbmsJDWw7ACt_auQ3FQJs/exec",
   cust: "https://script.google.com/macros/s/AKfycbztiWN2Xfkot_i5keu7o3Sm5z9sbXyTvDwIz9Yd23d-pg_Gl6ckIJrI71RV_K6jPIaM/exec",
   mod:  "https://script.google.com/macros/s/AKfycbyorR1RSI3-aYv91IIobUxMmNv8HKMyYvNKhwgR27AXetGROjkE_eYgBNyW5hwyPh_w/exec",
   // Your Cloudflare Worker HTML-fetch endpoint used by "qwerty" assets.

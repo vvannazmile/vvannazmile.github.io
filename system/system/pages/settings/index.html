@@ -378,7 +378,7 @@ kbd {
     <div id="cursorsOn" hidden>
       <article class="item cursor-size">
         <div class="item-name">Cursor size</div>
-        <p class="item-desc">Applies to every cursor in the active pack: the arrow, the pointing hand, the click, the grab and the nope.</p>
+        <p class="item-desc">Applies to every cursor in the active pack.</p>
         <div class="cs-row">
           <input type="range" class="cs-range" id="cursorSize" aria-label="Cursor size in pixels" />
           <output class="cs-value" id="cursorSizeOut" for="cursorSize"></output>
@@ -741,7 +741,6 @@ kbd {
   const toast = (msg) => window.showToast?.(msg, 2000);
   const on = $("cursorsOn"), off = $("cursorsOff");
   const range = $("cursorSize"), out = $("cursorSizeOut");
-  const LABELS = { normal: "normal", point: "point", click: "click", grab: "grab", deny: "nope" };
   const PRESETS = [["Small", 24], ["Default", 32], ["Large", 48], ["Huge", 64]];
 
   if (!C || !C.setSize) { off.hidden = false; return; }
@@ -764,13 +763,16 @@ kbd {
     const box = $("cursorPreview");
     C.preview(C.getActive(), size).then((urls) => {
       if (mine !== token) return;   // a newer size already asked
-      box.replaceChildren(...C.states.map((state) => {
+      // Only the states the active pack has.
+      box.replaceChildren(...C.states.filter((state) => urls[state]).map((state) => {
+        const label = C.labels[state] || state;
         const fig = document.createElement("figure");
         const img = document.createElement("img");
+        img.addEventListener("error", () => fig.remove(), { once: true });
         img.src = urls[state];
-        img.alt = `${LABELS[state]} cursor`;
+        img.alt = `${label} cursor`;
         const cap = document.createElement("figcaption");
-        cap.textContent = LABELS[state];
+        cap.textContent = label;
         fig.append(img, cap);
         return fig;
       }));
