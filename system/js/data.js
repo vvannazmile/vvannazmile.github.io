@@ -141,7 +141,7 @@
   // Writes the known keys from a parsed file. A ticket in the file is only
   // taken if the server accepts its id + key right now (so a hand-edited
   // file can't plant a junk ticket); otherwise the rest still imports.
-  // Returns { count, ticket: "approved"|"pending"|"denied"|"unknown"|"" }.
+  // Returns { count, ticket: "approved"|"pending"|"denied"|"needspass"|"unknown"|"" }.
   // `known`: the ticket's status if the caller already checked it. Throws if
   // the server can't be reached (so that never looks like a bad ticket).
   async function applyData(data, known) {
@@ -149,7 +149,7 @@
     let takeTicket = false;
     if (data.ws_ticket_id && window.WS_Ticket) {
       ticket = known || await window.WS_Ticket.verify(data.ws_ticket_id, data.ws_ticket_key);
-      takeTicket = ticket === "approved" || ticket === "pending" || ticket === "denied";
+      takeTicket = ticket === "approved" || ticket === "pending" || ticket === "denied" || ticket === "needspass";
     }
     let count = 0;
     DATA_KEYS.forEach(k => {
@@ -305,6 +305,21 @@
     // go straight to setting up their profile (the tour starts over).
   ];
 
+  // Start over with a NEW ticket (a different username). Everything is erased
+  // except one small breadcrumb, ws_ticket_lineage = { id, name }: the ticket
+  // this browser held. It has no secret key (it can't be used to get in), and
+  // ticket.js sends its id with the next ticket request so the server can log
+  // the new username in the same "account tree" as the old one.
+  function wipeForNewTicket() {
+    try {
+      const id = localStorage.getItem("ws_ticket_id") || "";
+      const name = localStorage.getItem("ws_username") || "";
+      if (id) localStorage.setItem("ws_ticket_lineage", JSON.stringify({ id, name, at: new Date().toISOString() }));
+    } catch (_) {}
+    [...DATA_KEYS, ...CLEARABLE_KEYS, "ws_ticket_backup"].forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+    try { window.WS_DataCache?.clear(); } catch (_) {}
+  }
+
   async function clearData() {
     // Close the ☰ menu first so the modal isn't fighting it for focus.
     const dash = document.getElementById("dashboardMenu");
@@ -322,7 +337,25 @@
       : window.confirm("Clear all your saved data?\n\nYou keep your ticket, username and credits.\n\nThis cannot be undone.");
     if (!confirmed) return;
 
-    CLEARABLE_KEYS.forEach(k => localStorage.removeItem(k));
+    // Second question: keep this ticket, or erase it too and begin a new one
+    // under a different username (the old username stays logged next to it).
+    let startOver = false;
+    if (localStorage.getItem("ws_ticket_id")) {
+      const oldName = localStorage.getItem("ws_username") || "your ticket";
+      startOver = window.WSRuSure
+        ? await window.WSRuSure.ask({
+            title:   "New ticket too?",
+            body:    `you can also erase ${oldName} from this browser and start over with a different username.`,
+            keep:    "your old username stays linked to the new one in our records.",
+            cancel:  "no, keep my ticket",
+            confirm: "yes, new username",
+            danger:  true,
+          })
+        : window.confirm(`Also erase ${oldName} from this browser and start a new ticket with a different username?\n\nYour old username stays linked to the new one in our records.`);
+    }
+
+    if (startOver) wipeForNewTicket();
+    else CLEARABLE_KEYS.forEach(k => localStorage.removeItem(k));
 
     try {
       const htmlTitle = document.querySelector("title");
@@ -334,10 +367,13 @@
       const cloakImg = document.querySelector("#cloak-btn img");
       if (cloakImg) cloakImg.src = "https://ws.ankomstudios.com/images/cloak-btn/visable.png";
 
-      document.documentElement.setAttribute("theme", "redux");
+      // (This used to set html[theme]="redux" too. themify.js watches that
+      // attribute and fetches the theme's assets the moment it changes, so a
+      // reset started a fetch of its own. The reload below applies the default
+      // theme anyway, since the "theme" key is gone.)
     } catch {}
 
-    if (typeof showToast === "function") showToast("🗑️ Data cleared. Reloading…");
+    if (typeof showToast === "function") showToast(startOver ? "🗑️ Data erased. Reloading for your new ticket…" : "🗑️ Data cleared. Reloading…");
     setTimeout(() => location.reload(), 1200);
   }
 

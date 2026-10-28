@@ -38,17 +38,23 @@
 //
 // window.WS_Ticket = {
 //   ready (Promise), id(), status(), approved(), asked(), withTicket(url),
+//   lineage() -> { id, name } of the ticket this browser held before a "new ticket"
+//                reset (or the current one), sent as `parent` with the next request
 //   username() -> this ticket's username ("" if unknown, e.g. pre-username tickets)
-//   request({ name, reason }) -> { ok, ticket, key, name, status }
+//   request({ name, reason, pass, role, blocker }) -> { ok, ticket, key, name, status }
 //                              | { ok:false, code:"name_taken"|"bad_name"|"bad_reason", error }
-//   (`reason` is "grade|name|role|paragraph" — built by the tutorial)
+//   (`reason` is "grade|name|role|paragraph" — built by the tutorial; the
+//   form's flip card is ticketcard.js. `pass` goes as `passhash`.)
 //   info() -> true/false: are new tickets still auto-approved? (null if unknown)
 //   cap()  -> the current auto-approve limit (the highest milestone in the
 //             TicketApprovalWS sheet), or null if unknown; set by info()
-//   check() -> "approved" | "pending" | "denied" | "unknown"
+//   check() -> "approved" | "pending" | "denied" | "needspass" | "unknown"
+//     ("needspass": approved, but made before passwords existed, so it has
+//     none yet and the server refuses it until setPassword() is done)
 //     (Status cells like "rejected", "banned" or "no" count as denied;
 //     any other unrecognised word as pending. See normalize().)
 //   verify(id, key) -> same, for a ticket from a data file; stores nothing
+//   setPassword(pass) -> { ok:true } | { ok:false, code:"bad_pass"|"ticket"|"has_pass", error }
 //   revoke(status) -> new ready promise (fires "ws:ticket-gate")
 // }
 // Fires "ws:ticket-change" on document whenever the id/status changes.
@@ -60,6 +66,7 @@
   const CLIENT_KEY = "ws_ticket_client";    // random per-browser id sent with the request
   const ASKED_KEY  = "ws_ticket_requested"; // "1" once this browser has sent its one request
   const USER_KEY   = "ws_username";         // the ticket's permanent username
+  const LINEAGE_KEY = "ws_ticket_lineage";  // { id, name } of the last ticket this browser held; survives "new ticket" resets (data.js)
   const BACKUP_KEY = "ws_ticket_backup";    // last wiped ticket {id,key,username,at}; see revoke()
 
   const read  = (k) => { try { return localStorage.getItem(k) || ""; } catch (_) { return ""; } };
@@ -71,6 +78,8 @@
   const approved = () => !!id() && status() === "approved";
   const asked    = () => read(ASKED_KEY) === "1";
   const username = () => read(USER_KEY);
+  // The previous ticket, if this browser started over (id + name only, never the key).
+  const lineage  = () => { try { const o = JSON.parse(localStorage.getItem(LINEAGE_KEY) || "null"); return o && o.id ? { id: String(o.id), name: String(o.name || "") } : null; } catch (_) { return null; } };
 
   let resolveReady;
   const newReady = () => new Promise((r) => { resolveReady = r; });
@@ -129,17 +138,49 @@
 
   // `name` is the username. Throws on network trouble; a taken or badly
   // formed username comes back as { ok:false, code }.
-  async function request({ name, reason }) {
-    const res = await api({}, { type: "ticket", name, reason, client: clientId() }, 45000);
+  // The ticket form also sends `role`, `blocker` and `pass`. The password is
+  // never stored here and never sent as typed: it goes as a SHA-256 hash
+  // (`passhash`) salted with the username. The server has to be taught to
+  // keep these (data.gs); until then it ignores the extra fields.
+  async function hashPass(name, pass) {
+    if (!pass) return "";
+    if (!window.crypto?.subtle) throw new Error("Passwords need a secure (https) connection.");
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`ws1:${String(name).toLowerCase()}:${pass}`));
+    return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function request({ name, reason, pass, role, blocker }) {
+    const passhash = await hashPass(name, pass);
+    const body = { type: "ticket", name, reason, client: clientId() };
+    if (role) body.role = role;
+    if (blocker) body.blocker = blocker;
+    if (passhash) body.passhash = passhash;
+    // Started over from an older ticket: say which, so the server logs this
+    // username in the same account tree ("old|new|newer").
+    const from = lineage();
+    if (from && from.id !== id()) body.parent = from.id;
+    const res = await api({}, body, 45000);
     if (res?.code === "name_taken" || res?.code === "bad_name" || res?.code === "bad_reason") return res;
     if (!res?.ok || !res.ticket) throw new Error(res?.error || "No ticket came back.");
     write(ASKED_KEY, "1");
+    try { localStorage.setItem(LINEAGE_KEY, JSON.stringify({ id: res.ticket, name: res.name || name, at: new Date().toISOString() })); } catch (_) {}
     // The server's copy wins (a repeat request gets the original username).
     write(USER_KEY, res.name || name);
     // res.existing: this browser had already asked — same ticket, no new row.
     res.status = normalize(res.status);
-    setState(res.ticket, res.status === "approved" || res.status === "denied" ? res.status : "pending", res.key || "");
+    setState(res.ticket, res.status === "approved" || res.status === "denied" || res.status === "needspass" ? res.status : "pending", res.key || "");
     return res;
+  }
+
+  // Gives an approved ticket that has no password one (the server only allows
+  // that for a ticket with its own key). Sent as a hash, like request().
+  async function setPassword(pass) {
+    if (!id() || !secret()) return { ok: false, code: "ticket", error: "There's no ticket to put a password on." };
+    const passhash = await hashPass(username(), pass);
+    const res = await api({}, { type: "setpass", ticket: id(), key: secret(), passhash }, 30000);
+    if (res?.ok) { setState(undefined, "approved"); return res; }
+    if (res?.code === "bad_pass" || res?.code === "ticket" || res?.code === "has_pass") return res;
+    throw new Error(res?.error || "The password wasn't saved.");
   }
 
   // Whether a new ticket would be approved on the spot (the backend decides:
@@ -170,6 +211,7 @@
   function normalize(st) {
     const s = String(st == null ? "" : st).trim().toLowerCase();
     if (s === "approved" || s === "accepted") return "approved";
+    if (s === "needs_password" || s === "needspass") return "needspass";
     if (s === "unknown" || s === "missing") return s;
     if (DENY_WORDS.has(s)) return "denied";
     return "pending";
@@ -188,7 +230,7 @@
   async function check() {
     if (!id()) return "unknown";
     const st = await lookup(id(), secret(), true);
-    if (st === "approved" || st === "pending" || st === "denied") setState(undefined, st);
+    if (st === "approved" || st === "pending" || st === "denied" || st === "needspass") setState(undefined, st);
     return st;
   }
 
@@ -211,7 +253,7 @@
       } catch (_) {}
       write(ID_KEY, ""); write(STATUS_KEY, ""); write(SECRET_KEY, ""); write(USER_KEY, "");
     }
-    else write(STATUS_KEY, st === "denied" ? "denied" : "pending");
+    else write(STATUS_KEY, st === "denied" ? "denied" : st === "needspass" ? "needspass" : "pending");
     window.WS_Ticket.ready = newReady();
     changed();
     document.dispatchEvent(new CustomEvent("ws:ticket-gate"));
@@ -257,7 +299,7 @@
     let b; try { b = JSON.parse(localStorage.getItem(BACKUP_KEY) || "null"); } catch (_) { b = null; }
     if (!b?.id) return "none";
     const st = await lookup(b.id, b.key, true);
-    if (st === "approved" || st === "pending" || st === "denied") {
+    if (st === "approved" || st === "pending" || st === "denied" || st === "needspass") {
       write(USER_KEY, b.username || "");
       setState(b.id, st, b.key || "");
       write(BACKUP_KEY, "");
@@ -265,5 +307,5 @@
     return st;
   }
 
-  window.WS_Ticket = { ready, id, status, approved, asked, username, withTicket, request, info, cap, check, verify, revoke, restore, normalize };
+  window.WS_Ticket = { ready, id, status, approved, asked, username, withTicket, request, setPassword, lineage, info, cap, check, verify, revoke, restore, normalize };
 })();

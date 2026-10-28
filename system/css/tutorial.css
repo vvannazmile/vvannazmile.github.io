@@ -114,6 +114,11 @@ html.wst-lock.wst-show-top #toTopBtn:disabled { opacity: 0.45 !important; cursor
 .wst-root.is-centered .wst-card.is-popping { animation-name: wst-pop-center; }
 @keyframes wst-pop-center { from { transform: translate(-50%, -50%) scale(0.7) rotate(-5deg); opacity: 0; } }
 
+/* "Create your ticket": wide enough for the flip card (ticketcard.js). */
+.wst-root.is-centered .wst-card.is-ticket { width: min(540px, calc(100vw - 24px)); }
+.wst-card.is-ticket .wst-tk-mount { margin-top: 14px; }
+.wst-card.is-ticket .wst-tk-mount .tk-in:focus-visible { outline: none; }
+
 .wst-sticker {
   position: absolute;
   top: -8px;
@@ -288,6 +293,7 @@ html.wst-lock.wst-show-top #toTopBtn:disabled { opacity: 0.45 !important; cursor
 .wst-fields .wst-label { margin-top: 14px; }
 
 .wst-fields input[type="text"],
+.wst-fields input[type="password"],
 .wst-fields textarea {
   width: 100%;
   padding: 9px 12px;
@@ -319,7 +325,10 @@ html.wst-lock.wst-show-top #toTopBtn:disabled { opacity: 0.45 !important; cursor
 .wst-optional { font-weight: normal; opacity: 0.6; }
 .wst-count { display: block; margin-top: 4px; text-align: right; font-size: 0.7rem; opacity: 0.55; }
 .wst-fields input[type="text"]:focus,
+.wst-fields input[type="password"]:focus,
 .wst-fields textarea:focus { outline: none; border-color: var(--accent-color, #f44); }
+.wst-fields .wst-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-weight: normal; cursor: pointer; }
+.wst-fields .wst-check input { width: auto; accent-color: var(--accent-color, #f44); }
 .wst-fields input[type="text"]::placeholder,
 .wst-fields textarea::placeholder { color: inherit; opacity: 0.45; }
 
@@ -470,3 +479,6 @@ html.wst-lock.wst-show-top #toTopBtn:disabled { opacity: 0.45 !important; cursor
   .wst-root, .wst-shade, .wst-ring, .wst-card, .wst-avatar, .wst-next { transition: none; }
   .wst-ring.is-on, .wst-card.is-popping, .wst-next { animation: none; }
 }
+
+/* "Set a password": a little air between the ticket box and the fields. */
+.wst-text .wst-ticket + .wst-fields { margin-top: 16px; }

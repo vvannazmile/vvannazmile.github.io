@@ -50,13 +50,12 @@
 // (WS_Ticket).
 (() => {
   const TUTORIAL_VERSION = "4evr-1";
+  const SELF_SRC         = (document.currentScript && document.currentScript.src) || "";  // for loading ticketcard.js from beside this file
   const DONE_KEY         = "ws_tutorial_version";
   const NICK_MAX         = 20;
-  // "Create your ticket" extras. They're sent as one Reason string,
-  // "grade|name|role|paragraph", with N/A for the optional blanks.
+  // "Create your ticket" extras. The reason is sent as one Reason string,
+  // "grade|name|role|paragraph" (see ticketReason), with N/A for blanks.
   const REASON_MAX       = 800;   // the optional paragraph
-  const REALNAME_MAX     = 40;    // the optional real name
-  const TICKET_GRADES    = ["9", "10", "11", "12"];
   const TICKET_ROLES     = ["normie", "tester", "contributor"];
   const STEP_COUNT       = 8;
 
@@ -589,107 +588,141 @@
   // never asked, otherwise whatever state its ticket is in.
   function afterProfileNeedsTicket() {
     const T = window.WS_Ticket;
-    if (T.id()) { T.status() === "denied" ? stepDenied() : (stepPending(), checkTicket(false)); return; }
+    if (T.id()) {
+      if (T.status() === "denied") stepDenied();
+      else if (T.status() === "needspass") stepSetPassword();
+      else { stepPending(); checkTicket(false); }
+      return;
+    }
     stepCreateTicket();
   }
 
-  // "Create your ticket": a USERNAME (unique, permanent — it's the ticket's
-  // name) and a reason. The nickname is separate and optional (profile step).
-  // Builds the ticket's Reason: "grade|name|role|paragraph" — N/A for an
-  // optional blank; a "|" typed into the name or paragraph becomes "/" so
-  // it can't break the format. e.g. "10|N/A|normie|N/A".
-  function ticketReason({ grade, realname, role, about }) {
+  // "Create your ticket": the flip card (ticketcard.js). FRONT = username,
+  // password, blocker, role; BACK = the ticket id (filled in once the server
+  // issues it), profile picture, username, role, blocker and the reason.
+  // The username is the ticket's permanent name; the nickname is separate and
+  // optional (profile step). The profile picture picked on the back is saved
+  // as the profile picture, so the profile step opens with it already chosen.
+  //
+  // The ticket's Reason string keeps its old 4-part shape,
+  // "grade|name|role|paragraph", so the server can still read it: grade and
+  // name are gone from the form and go as N/A. e.g. "N/A|N/A|normie|N/A".
+  // The new fields also go as their own body fields (see ticket.js request()).
+  function ticketReason({ role, about }) {
     const part = (v) => String(v || "").replace(/\|/g, "/").replace(/\s+/g, " ").trim() || "N/A";
-    return [grade, part(realname), role, part(about)].join("|");
+    return ["N/A", "N/A", role, part(about)].join("|");
+  }
+
+  const PASS_MIN = 6;
+  let ticketCardApi = null;
+
+  // The card lives in its own file. Pages that already include ticketcard.js
+  // are fine; otherwise it's loaded from next to this script (it adds its own
+  // stylesheet). Resolves false if it can't be had.
+  function ensureTicketCard() {
+    if (window.WS_TicketCard) return window.WS_TicketCard.ready.then(() => true);
+    if (!SELF_SRC) return Promise.resolve(false);
+    return new Promise((res) => {
+      const s = document.createElement("script");
+      s.src = new URL("ticketcard.js", SELF_SRC).href;
+      s.onload  = () => (window.WS_TicketCard ? window.WS_TicketCard.ready.then(() => res(true)) : res(false));
+      s.onerror = () => res(false);
+      document.head.appendChild(s);
+    });
   }
 
   function stepCreateTicket(err = "") {
     stopPoll();
     spot = null;
     stepTick = null;
-    // This function used to read `T` without declaring it (the only `T` in
-    // scope belonged to afterProfileNeedsTicket), so drawing the ticket form
-    // threw "T is not defined" and new people never got past "One sec…".
-    const T = window.WS_Ticket || {};
+    ticketCardApi?.destroy();
+    ticketCardApi = null;
+    const T  = window.WS_Ticket || {};
+    const TC = window.WS_TicketCard;
+    if (!TC) {
+      setCard({ step: 0, title: "Welcome to WannaSmile!", html: "<p>The ticket form couldn't load. Reload the page and try again.</p>" });
+      return;
+    }
     const draft = stepCreateTicket.draft || {};
-    const opts  = (list, pick) => list.map((v) => `<option value="${v}"${v === pick ? " selected" : ""}>${v}</option>`).join("");
     setCard({
       step: 0,
+      cls: "is-ticket",
       title: "Create your ticket",
       html: `
         <p>WannaSmile is invite-only for now. ${autoApprove === true
           ? (T.cap?.() ? `You're early: the first ${T.cap()} tickets get in straight away.` : "You're early: new tickets get in straight away right now.")
           : "Tickets are checked by hand, so yours may take a little while."} You only get one, so make it count.</p>
-        <div class="wst-fields">
-          <label for="wstTicketName">Username</label>
-          <input id="wstTicketName" type="text" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Pick a unique username" />
-          <p class="wst-note">Your username is on your ticket for good: it's unique to you and can't be changed. You can pick a display nickname afterwards.</p>
-          <div class="wst-row">
-            <div>
-              <label for="wstGrade" class="wst-label">Grade</label>
-              <select id="wstGrade"><option value="">Pick…</option>${opts(TICKET_GRADES, draft.grade)}</select>
-            </div>
-            <div>
-              <label for="wstRole" class="wst-label">Role</label>
-              <select id="wstRole"><option value="">Pick…</option>${opts(TICKET_ROLES, draft.role)}</select>
-            </div>
-          </div>
-          <label for="wstRealName" class="wst-label">Name <span class="wst-optional">(optional)</span></label>
-          <input id="wstRealName" type="text" maxlength="${REALNAME_MAX}" autocomplete="off" spellcheck="false" placeholder="Your real name, if you'd like" />
-          <label for="wstReason" class="wst-label">Why do you want in? <span class="wst-optional">(optional)</span></label>
-          <textarea id="wstReason" maxlength="${REASON_MAX}" rows="3" placeholder="Who sent you, what you're here for…"></textarea>
-          <span class="wst-count" aria-live="polite"></span>
-        </div>
+        ${T.lineage?.()?.name ? `<p class="wst-note">Starting over from <b>@${escapeHTML(T.lineage().name)}</b>? Pick a different username: it gets linked to your old one in our records.</p>` : ""}
+        <p class="wst-note">Fill in the front, flip it, then pick a picture and tell us why you want in. Your username is on your ticket for good: it's unique to you and can't be changed.</p>
+        <div class="wst-tk-mount"></div>
         <p class="wst-alt"><button type="button" class="wst-link" data-have>I have a data file</button></p>`,
     });
-    const nameEl   = $("#wstTicketName");
-    const gradeEl  = $("#wstGrade");
-    const roleEl   = $("#wstRole");
-    const realEl   = $("#wstRealName");
-    const reasonEl = $("#wstReason");
-    const countEl  = textEl.querySelector(".wst-count");
-    nameEl.value   = draft.name ?? "";
-    realEl.value   = draft.realname ?? "";
-    reasonEl.value = draft.about ?? "";
     textEl.querySelector("[data-have]").addEventListener("click", openUploadModal);
 
-    const fields = () => ({
-      name:     nameEl.value.trim(),
-      grade:    gradeEl.value,
-      role:     roleEl.value,
-      realname: realEl.value.trim().slice(0, REALNAME_MAX),
-      about:    reasonEl.value.trim().slice(0, REASON_MAX),
-    });
-    const problem = (f) =>
-         (f.name && usernameProblem(f.name))
-      || (blockedBy(f.name) ? "That username isn't allowed. Try another one." : "")
-      || (usernameTakenBy(f.name) ? "That username, or one too close to it, is taken. Try another one." : "")
-      || (blockedBy(f.realname) ? "That name isn't allowed." : "")
-      || (blockedBy(f.about) ? "Something in your reason isn't allowed. Try rewording it." : "");
-    const missing = (f) => !f.name ? "Pick a username." : !f.grade ? "Pick your grade." : !f.role ? "Pick your role." : "";
+    const images   = Array.isArray(window.PROFILE_IMAGES) ? window.PROFILE_IMAGES
+                   : (typeof PROFILE_IMAGES !== "undefined" ? PROFILE_IMAGES : []);
+    const defPic   = typeof DEFAULT_PIC !== "undefined" ? DEFAULT_PIC : "";
+    const savedPic = (() => { try { const p = localStorage.getItem("profilePic") || ""; return p && p !== defPic ? p : ""; } catch (_) { return ""; } })();
 
-    const validate = () => {
-      const f = fields();
-      countEl.textContent = `${reasonEl.value.length} / ${REASON_MAX}`;
-      const bad = problem(f);
-      const ok  = !bad && !missing(f);
-      if (ok) showNext("Create ticket", send);
-      else hideNext();
-      if (!err) setStatus(bad || missing(f));
-      err = "";
+    const problemFront = (x) =>
+         usernameProblem(x.user)
+      || (blockedBy(x.user) ? "That username isn't allowed. Try another one." : "")
+      || (usernameTakenBy(x.user) ? "That username, or one too close to it, is taken. Try another one." : "")
+      || (!x.pass ? "Pick a password."
+        : x.pass.length < PASS_MIN ? `Passwords are at least ${PASS_MIN} characters.`
+        : !x.blocker ? "Pick your blocker."
+        : !x.role ? "Pick your role." : "");
+    const problemBack = (x) =>
+         (!x.pic ? "Pick a profile picture." : "")
+      || (blockedBy(x.reason) ? "Something in your reason isn't allowed. Try rewording it." : "");
+
+    let sending  = false;
+    let errShown = err;
+    const refresh = () => {
+      if (sending) return;
+      const isBack = tk.side() === "back";
+      backBtn.hidden = !isBack;
+      const bad = tk.problem();
+      if (bad) hideNext();
+      else if (isBack) showNext("Create ticket", send);
+      else showNext("Flip ticket", () => tk.flip("back"));
+      if (errShown) { setStatus(errShown); errShown = ""; } else setStatus(bad);
     };
-    const send = async () => {
-      const f = fields();
-      if (problem(f) || missing(f)) return;
-      stepCreateTicket.draft = f;
+
+    const tk = TC.create(textEl.querySelector(".wst-tk-mount"), {
+      images, defaultPic: defPic, roles: TICKET_ROLES,
+      passMin: PASS_MIN, reasonMax: REASON_MAX,
+      values: { user: draft.user || "", pass: draft.pass || "", blocker: draft.blocker || "", role: draft.role || "", pic: draft.pic || savedPic, reason: draft.reason || "" },
+      validateFront: problemFront,
+      validateBack:  problemBack,
+      onChange: refresh,
+      onSubmit: () => { if (onNext) onNext(); },
+      onError:  (m) => setStatus(m),
+    });
+    ticketCardApi = tk;
+    onBack = () => tk.flip("front");
+
+    async function send() {
+      const x = tk.values();
+      if (problemFront(x) || problemBack(x)) return;
+      stepCreateTicket.draft = x;
+      sending = true;
       hideNext();
+      backBtn.hidden = true;
+      tk.lock(true);
       setStatus("Sending your ticket…");
       let res;
       try {
-        res = await window.WS_Ticket.request({ name: f.name, reason: ticketReason(f) });
+        res = await window.WS_Ticket.request({
+          name: x.user, reason: ticketReason({ role: x.role, about: x.reason }),
+          pass: x.pass, role: x.role, blocker: x.blocker,
+        });
       } catch (e) {
         console.warn("[tutorial] ticket request failed:", e);
-        setStatus("Couldn't send that. Check your connection and try again.");
+        sending = false;
+        tk.lock(false);
+        backBtn.hidden = false;
+        setStatus(/secure/i.test(e?.message || "") ? e.message : "Couldn't send that. Check your connection and try again.");
         showNext("Try again", send);
         return;
       }
@@ -701,24 +734,38 @@
         stepCreateTicket("Use 3-20 letters, numbers, _ . or - (starting with a letter or number).");
         return;
       }
+      if (res.code === "bad_pass") {
+        stepCreateTicket("The server needs a password with that. Type it again, then try once more.");
+        return;
+      }
+      if (res.code === "bad_blocker") {
+        stepCreateTicket("The server didn't accept that blocker. Pick it again, then try once more.");
+        return;
+      }
       if (res.code === "bad_reason") {
-        stepCreateTicket("Pick your grade and role again, then try once more.");
+        stepCreateTicket("The server didn't accept that role. Pick it again, then try once more.");
         return;
       }
       stepCreateTicket.draft = null;
-      showTicketStatus(res.status, res.existing ? "You'd already asked from this browser, and that ticket's approved." : (window.WS_Ticket?.cap?.() ? `You're one of the first ${window.WS_Ticket.cap()}, so you're in.` : "You're early, so you're in."));
-    };
+      // The picture picked on the back is their profile picture from here on.
+      try { if (x.pic) localStorage.setItem("profilePic", x.pic); } catch (_) {}
+      // Show the issued id on the ticket for a moment, then move on.
+      tk.rollId(window.WS_Ticket.id());
+      setStatus("Ticket created.", true);
+      const msg = res.existing ? "You'd already asked from this browser, and that ticket's approved."
+                : (window.WS_Ticket?.cap?.() ? `You're one of the first ${window.WS_Ticket.cap()}, so you're in.` : "You're early, so you're in.");
+      setTimeout(() => showTicketStatus(res.status, msg), reduceMotion?.matches ? 300 : 1900);
+    }
 
-    [nameEl, realEl, reasonEl].forEach((el) => el.addEventListener("input", validate));
-    [gradeEl, roleEl].forEach((el) => el.addEventListener("change", validate));
-    if (err) setStatus(err);
-    validate();
-    setTimeout(() => nameEl.focus({ preventScroll: true }), 50);
+    if (err) errShown = err;
+    refresh();
+    setTimeout(() => tk.focus(), 50);
   }
 
   function showTicketStatus(st, approvedMsg) {
     if (st === "approved") ticketApproved(approvedMsg);
     else if (st === "denied") stepDenied();
+    else if (st === "needspass") stepSetPassword();
     else stepPending();
   }
 
@@ -830,6 +877,7 @@
       const st = await window.WS_Ticket.check();
       if (st === "approved") ticketApproved();
       else if (st === "denied") stepDenied();
+      else if (st === "needspass") stepSetPassword();
       else if (loud) setStatus("Still waiting on approval.");
     } catch (err) {
       console.warn("[tutorial] ticket check failed:", err);
@@ -857,6 +905,80 @@
     stopPoll();
     pollTimer = setInterval(() => checkTicket(false), TICKET_POLL_MS);
     focusCard();
+  }
+
+  // A ticket made before passwords existed is approved but has none, and the
+  // server refuses it (ticket "needs_password") until one is set. Everything
+  // stays behind this screen until it's done.
+  function stepSetPassword(err = "") {
+    stopPoll();
+    spot = null;
+    stepTick = null;
+    ticketCardApi?.destroy();
+    ticketCardApi = null;
+    const username = ticketUsername();
+    setCard({
+      step: 0,
+      title: "Set a password",
+      html: `
+        <p>${username ? `Your ticket, <b>@${escapeHTML(username)}</b>, was made before tickets had passwords.` : "Your ticket was made before tickets had passwords."} Pick one now to keep using the site.</p>
+        ${ticketBox()}
+        <form class="wst-fields" autocomplete="on" novalidate>
+          <input type="text" name="username" value="${escapeHTML(username)}" autocomplete="username" readonly tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" />
+          <label for="wstPass1">New password</label>
+          <input id="wstPass1" type="password" maxlength="64" autocomplete="new-password" spellcheck="false" placeholder="At least ${PASS_MIN} characters" />
+          <label for="wstPass2" class="wst-label">Type it again</label>
+          <input id="wstPass2" type="password" maxlength="64" autocomplete="new-password" spellcheck="false" placeholder="The same password" />
+          <label class="wst-check"><input id="wstPassShow" type="checkbox" /> Show passwords</label>
+        </form>
+        <p class="wst-note">Write it down somewhere safe: it can't be shown again. Your ticket id and secret key stay the same.</p>`,
+    });
+    wireTicketBox();
+    textEl.querySelector("form.wst-fields").addEventListener("submit", (e) => e.preventDefault());
+    const p1 = $("#wstPass1"), p2 = $("#wstPass2"), show = $("#wstPassShow");
+    let sending = false;
+    let errShown = err;
+    const problem = () =>
+        !p1.value ? "Pick a password."
+      : p1.value.length < PASS_MIN ? `Passwords are at least ${PASS_MIN} characters.`
+      : p1.value !== p2.value ? "The two passwords don't match yet."
+      : "";
+    const refresh = () => {
+      if (sending) return;
+      const bad = problem();
+      if (bad) hideNext(); else showNext("Save password", save);
+      if (errShown) { setStatus(errShown); errShown = ""; } else setStatus(bad);
+    };
+    async function save() {
+      if (problem() || sending) return;
+      sending = true;
+      hideNext();
+      setStatus("Saving…");
+      try {
+        const res = await window.WS_Ticket.setPassword(p1.value);
+        if (res.ok) { ticketApproved("Password saved."); return; }
+        sending = false;
+        if (res.code === "has_pass") {
+          // Somebody (this browser, another tab) already did it: carry on.
+          const st = await window.WS_Ticket.check().catch(() => null);
+          if (st === "approved") { ticketApproved("That ticket already has a password."); return; }
+        }
+        errShown = res.code === "ticket" ? "The server didn't recognise this ticket, so the password wasn't saved. Reload the page and try again."
+                 : "That password wasn't accepted. Try a different one.";
+      } catch (e) {
+        console.warn("[tutorial] setting the password failed:", e);
+        sending = false;
+        errShown = /secure/i.test(e?.message || "") ? e.message : "Couldn't save that. Check your connection and try again.";
+      }
+      refresh();
+    }
+    [p1, p2].forEach((el) => {
+      el.addEventListener("input", refresh);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" && onNext) { e.preventDefault(); onNext(); } });
+    });
+    show.addEventListener("change", () => { p1.type = p2.type = show.checked ? "text" : "password"; });
+    refresh();
+    setTimeout(() => p1.focus({ preventScroll: true }), 50);
   }
 
   function stepDenied() {
@@ -1391,6 +1513,7 @@
     const T = window.WS_Ticket;
     if (T.id()) {
       if (T.status() === "denied") { stepDenied(); return; }
+      if (T.status() === "needspass") { stepSetPassword(); return; }
       stepPending();
       checkTicket(false);
       return;
@@ -1411,6 +1534,7 @@
         capped(T.info(), 9000),
         capped(window.WS_WordFilter?.load(), 6000),
         capped(window.WS_WordFilter?.loadUsernames(), 6000),
+        capped(ensureTicketCard(), 6000),
       ]);
       autoApprove = typeof auto === "boolean" ? auto : null;
     } catch (_) { autoApprove = null; }
