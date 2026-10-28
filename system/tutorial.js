@@ -8,8 +8,12 @@
 //                 "Create your ticket" comes first: a USERNAME (unique,
 //                 permanent, on the ticket) + a reason; an "I have a data
 //                 file" button opens a pop-up for bringing a ticket over
-//                 instead. Once approved: profile picture + an OPTIONAL
-//                 nickname (a display name; the username shows without one).
+//                 instead. The picture chosen on the flipped ticket is saved as
+//                 the profile picture the moment the ticket is created, so
+//                 nobody is asked for a profile again (the username shows
+//                 until a nickname is set from the profile). The profile step
+//                 (stepSetup) only runs for someone who got in some other way,
+//                 e.g. a data file with no picture.
 //                 Steps 2–5 always wait for an approved ticket.
 //   2. Pages    — change the page with the arrows (or ← →)
 //   3. Search   — type in the search box; it searches every page at once
@@ -631,6 +635,22 @@
     });
   }
 
+  // Saves the picture chosen on the ticket as the profile and marks the profile
+  // step done (so it neither runs now nor comes back on the next visit). A
+  // failure (almost always full browser storage after a big upload) leaves the
+  // step undone, so the profile step still gets its chance to ask.
+  function saveTicketProfile(pic, name) {
+    if (!pic) return;
+    try {
+      if (typeof saveProfile === "function") saveProfile({ name, pic, pixelated: false });
+      else { localStorage.setItem("nickname", name); localStorage.setItem("profilePic", pic); }
+      localStorage.setItem(PROFILE_DONE_KEY, "1");
+      profileFirstDone = true;
+    } catch (err) {
+      console.warn("[tutorial] couldn't save the ticket picture as the profile:", err);
+    }
+  }
+
   function stepCreateTicket(err = "") {
     stopPoll();
     spot = null;
@@ -653,7 +673,7 @@
           ? (T.cap?.() ? `You're early: the first ${T.cap()} tickets get in straight away.` : "You're early: new tickets get in straight away right now.")
           : "Tickets are checked by hand, so yours may take a little while."} You only get one, so make it count.</p>
         ${T.lineage?.()?.name ? `<p class="wst-note">Starting over from <b>@${escapeHTML(T.lineage().name)}</b>? Pick a different username: it gets linked to your old one in our records.</p>` : ""}
-        <p class="wst-note">Fill in the front, flip it, then pick a picture and tell us why you want in. Your username is on your ticket for good: it's unique to you and can't be changed.</p>
+        <p class="wst-note">Fill in the front, flip it, then pick a picture and tell us why you want in. The picture on your ticket becomes your profile picture, so there's no separate profile step. Your username is on your ticket for good: it's unique to you and can't be changed.</p>
         <div class="wst-tk-mount"></div>
         <p class="wst-alt"><button type="button" class="wst-link" data-have>I have a data file</button></p>`,
     });
@@ -747,8 +767,10 @@
         return;
       }
       stepCreateTicket.draft = null;
-      // The picture picked on the back is their profile picture from here on.
-      try { if (x.pic) localStorage.setItem("profilePic", x.pic); } catch (_) {}
+      // The picture picked on the flipped ticket IS their profile picture, so
+      // the profile is saved right here (username as the display name until a
+      // nickname is set) and the separate "Set up your profile" step is skipped.
+      saveTicketProfile(x.pic, window.WS_Ticket.username() || x.user);
       // Show the issued id on the ticket for a moment, then move on.
       tk.rollId(window.WS_Ticket.id());
       setStatus("Ticket created.", true);

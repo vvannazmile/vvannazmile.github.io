@@ -7,18 +7,16 @@
 // adds the word filter, username checks and WS_Ticket.request) and the
 // fake one on /pages/ticket-preview/.
 //
-// ART: images/ticket-sheet.png is a sprite sheet of 2 frames, 150×100
-// each, stacked: frame 1 = FRONT (the form), frame 2 = BACK (the ticket).
-// Every field is an HTML control placed on the art in "sprite pixels"
-// (one sprite pixel = --u CSS px; see the RECT table below, which was
-// measured off the sheet). Changing the art means updating that table.
+// LOOK: pure CSS (css/ticket.css), styled like the tutorial's modals. Both
+// faces share one grid cell, so the card is as tall as the taller face and
+// the flip never resizes it. There is no sprite art to load.
 //
 //   FRONT  username · password (+ eye) · blocker · role
 //          — all four are needed before the ticket can be flipped.
-//   BACK   ticket id (left, top) · profile picture (left, pick one from
-//          the tray under the card) · username (under the picture) ·
-//          role (banner, top right) · the chosen blocker (above the reason)
-//          · reason (centre right).
+//   BACK   ticket id (top left) · role (top right) · profile picture (left,
+//          pick one from the tray under the card; it becomes the person's
+//          profile picture, so the tutorial doesn't ask for one again) ·
+//          username (under the picture) · the chosen blocker + reason (right).
 //
 // Pass the card a <div> to live in:
 //
@@ -41,7 +39,7 @@
 //   tk.problem()         -> the current face's validation message ("" = good)
 //   tk.lock(true|false)  disable every field (while a request is in flight)
 //   tk.focus()           focus the first field on the visible face
-//   tk.fit()             re-measure (called for you on resize)
+//   tk.fit()             kept for older callers; the layout is fluid, so it does nothing
 //   tk.destroy()
 //
 // WS_TicketCard.randomId() -> "#" + 8 random letters/digits (the preview page uses it).
@@ -60,24 +58,7 @@
   // (same rule as the server and tutorial.js).
   const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{2,19}$/;
 
-  // Where each control sits on the art, in sprite pixels: [x, y, w, h].
-  // FRONT = frame 1, BACK = frame 2 (y is measured from the top of that frame).
-  const RECT = {
-    user:    [7,   21, 60, 9],
-    blocker: [106, 21, 36, 10],
-    pass:    [8,   53, 61, 9],
-    eye:     [71,  53, 11, 9],
-    role:    [105, 52, 36, 10],
-    id:      [7,   9,  42, 9],
-    banner:  [95,  1,  54, 10],
-    photo:   [8,   21, 51, 51],
-    name:    [8,   74, 58, 10],
-    chip:    [68,  14, 80, 9],
-    reason:  [68,  38, 82, 34],
-  };
-
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const at  = (k) => `style="--x:${RECT[k][0]};--y:${RECT[k][1]};--w:${RECT[k][2]};--h:${RECT[k][3]}"`;
   const reduceMotion = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   // ── stylesheet ───────────────────────────────────────────────────────
@@ -105,7 +86,7 @@
   function create(mount, opts = {}) {
     const o = {
       images: [], defaultPic: "", blockers: BLOCKERS, roles: ROLES,
-      userMax: 20, passMin: 6, passMax: 64, reasonMax: 800, maxScale: 3,
+      userMax: 20, passMin: 6, passMax: 64, reasonMax: 800,
       ...opts,
     };
     const v = { user: "", pass: "", blocker: "", role: "", pic: "", reason: "", ...(opts.values || {}) };
@@ -120,27 +101,47 @@
       <div class="tk-stage">
         <div class="tk-card">
           <div class="tk-face tk-front">
-            <input class="tk-in" data-f="user" type="text" ${at("user")} maxlength="${o.userMax}" placeholder="username" aria-label="Username" autocomplete="off" autocapitalize="off" spellcheck="false" />
-            <select class="tk-in tk-sel" data-f="blocker" ${at("blocker")} aria-label="Blocker (the web filter you're behind)">
-              <option value="">pick…</option>${o.blockers.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join("")}
-            </select>
-            <input class="tk-in" data-f="pass" type="password" ${at("pass")} maxlength="${o.passMax}" placeholder="password" aria-label="Password" autocomplete="new-password" spellcheck="false" />
-            <button type="button" class="tk-eye" ${at("eye")} aria-label="Show password" aria-pressed="false"></button>
-            <select class="tk-in tk-sel" data-f="role" ${at("role")} aria-label="Role">
-              <option value="">pick…</option>${o.roles.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join("")}
-            </select>
+            <div class="tk-head"><span class="tk-brand">WannaSmile4Evr</span><span class="tk-stub">admit one</span></div>
+            <div class="tk-body">
+              <label class="tk-field"><span class="tk-lab">Username</span>
+                <input class="tk-in" data-f="user" type="text" maxlength="${o.userMax}" placeholder="username" aria-label="Username" autocomplete="off" autocapitalize="off" spellcheck="false" />
+              </label>
+              <div class="tk-field"><span class="tk-lab">Password</span>
+                <div class="tk-pass">
+                  <input class="tk-in" data-f="pass" type="password" maxlength="${o.passMax}" placeholder="password" aria-label="Password" autocomplete="new-password" spellcheck="false" />
+                  <button type="button" class="tk-eye" aria-label="Show password" aria-pressed="false">show</button>
+                </div>
+              </div>
+              <label class="tk-field"><span class="tk-lab">Blocker <small>(your web filter)</small></span>
+                <select class="tk-in tk-sel" data-f="blocker" aria-label="Blocker (the web filter you're behind)">
+                  <option value="">pick…</option>${o.blockers.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join("")}
+                </select>
+              </label>
+              <label class="tk-field"><span class="tk-lab">Role</span>
+                <select class="tk-in tk-sel" data-f="role" aria-label="Role">
+                  <option value="">pick…</option>${o.roles.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
           </div>
           <div class="tk-face tk-back">
-            <span class="tk-txt tk-id" ${at("id")}></span>
-            <span class="tk-txt tk-banner" ${at("banner")}></span>
-            <span class="tk-txt tk-chip" ${at("chip")} hidden></span>
-            <button type="button" class="tk-photo" ${at("photo")} aria-label="Choose your profile picture"><img alt="" hidden /></button>
-            <span class="tk-txt tk-name" ${at("name")}></span>
-            <textarea class="tk-in tk-reason" data-f="reason" ${at("reason")} maxlength="${o.reasonMax}" placeholder="Why do you want in? Who sent you?" aria-label="Reason" spellcheck="true"></textarea>
+            <div class="tk-head"><span class="tk-txt tk-id"></span><span class="tk-txt tk-banner"></span></div>
+            <div class="tk-body">
+              <div class="tk-who">
+                <button type="button" class="tk-photo" aria-label="Choose your profile picture"><img alt="" hidden /><span class="tk-photo-hint"><b aria-hidden="true">＋</b>pick a picture below</span></button>
+                <span class="tk-txt tk-name"></span>
+              </div>
+              <div class="tk-note">
+                <span class="tk-txt tk-chip" hidden></span>
+                <label class="tk-lab" for="tkReason">Why do you want in? <small>(optional)</small></label>
+                <textarea id="tkReason" class="tk-in tk-reason" data-f="reason" maxlength="${o.reasonMax}" placeholder="Who sent you? Tell us a bit." spellcheck="true"></textarea>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="tk-tray" role="radiogroup" aria-label="Profile picture"></div>
+      <p class="tk-tray-note" id="tkTrayNote">Pick your profile picture</p>
+      <div class="tk-tray" role="radiogroup" aria-labelledby="tkTrayNote"></div>
       <input class="tk-upload" type="file" accept="image/*" hidden />`;
     mount.appendChild(el);
 
@@ -158,18 +159,8 @@
     f.user.value = v.user; f.pass.value = v.pass; f.blocker.value = v.blocker;
     f.role.value = v.role; f.reason.value = v.reason;
 
-    // ── sizing: one sprite pixel = --u CSS px (whole numbers when there's room,
-    // so the pixel art stays crisp; fractional on a narrow phone)
-    const fit = () => {
-      const avail = mount.clientWidth || (mount.parentElement && mount.parentElement.clientWidth) || 450;
-      const byHeight = Math.max(2, Math.floor((innerHeight - 300) / 100));
-      const k = avail >= 300 ? Math.min(Math.floor(avail / 150), o.maxScale, byHeight) : avail / 150;
-      el.style.setProperty("--u", k.toFixed(3) + "px");
-    };
-    fit();
-    let ro = null;
-    if ("ResizeObserver" in window) { ro = new ResizeObserver(fit); ro.observe(mount); }
-    window.addEventListener("resize", fit);
+    // The layout is fluid (CSS), so there is nothing to measure.
+    const fit = () => {};
 
     // ── avatar tray
     const tiles = [];
@@ -202,25 +193,17 @@
     };
 
     // ── drawing the back
-    const fitText = (node, text, maxPx, widthU, perChar = 0.62) => {
-      // font-size in sprite pixels: as big as maxPx, shrunk so `text` fits widthU
-      const n = Math.max(1, String(text).length);
-      node.style.setProperty("--fs", Math.min(maxPx, widthU / (n * perChar)).toFixed(2));
-    };
     const render = () => {
       $(".tk-id").textContent = idText;
-      fitText($(".tk-id"), idText, 7, RECT.id[2]);
       const roleTxt = cap(v.role) || "Role";
       $(".tk-banner").textContent = roleTxt;
       $(".tk-banner").classList.toggle("is-empty", !v.role);
-      fitText($(".tk-banner"), roleTxt, 7.5, RECT.banner[2]);
       const chip = $(".tk-chip");
       chip.hidden = !v.blocker;
       chip.textContent = v.blocker;
       const name = v.user || "Username";
       $(".tk-name").textContent = name;
       $(".tk-name").classList.toggle("is-empty", !v.user);
-      fitText($(".tk-name"), name, 8, RECT.name[2]);
       const src = v.pic || "";
       photoImg.hidden = !src;
       if (src) photoImg.src = src;
@@ -267,9 +250,9 @@
     eye.addEventListener("click", () => {
       const show = f.pass.type === "password";
       f.pass.type = show ? "text" : "password";
-      eye.classList.toggle("is-shown", show);
       eye.setAttribute("aria-pressed", String(show));
       eye.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      eye.textContent = show ? "hide" : "show";
       f.pass.focus({ preventScroll: true });
     });
 
@@ -364,7 +347,7 @@
         el.querySelectorAll("input, select, textarea, button").forEach((n) => { n.disabled = !!on; });
       },
       fit,
-      destroy() { clearInterval(rollTimer); ro?.disconnect(); window.removeEventListener("resize", fit); el.remove(); },
+      destroy() { clearInterval(rollTimer); el.remove(); },
     };
 
     render();

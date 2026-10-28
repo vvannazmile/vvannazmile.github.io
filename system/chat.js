@@ -15,6 +15,12 @@
 //  • Friend requests: send → they Accept (or Decline) → then you can chat.
 //    The newest 60 messages per friendship are kept; older ones are deleted
 //    by the server as new ones arrive.
+//  • GLOBAL CHAT: a room pinned at the top of the list that every approved
+//    ticket can read and post in, no friend request needed (data.gs
+//    "global room": GET &room=global, POST send {room:"global"}). It's how
+//    people meet: click anyone's name or picture in it to add them as a
+//    friend, then talk privately. It's the pseudo-conversation GLOBAL
+//    ("#global") in state.active; a real username can never start with "#".
 //  • msgcore.js (WS_Msg) is shared with the rest of the site. This page hands
 //    it every poll answer; in return it supplies profile pictures and display
 //    names, the real "is typing" state (and the column-C typing quotes),
@@ -35,9 +41,10 @@
   const MAX_BACKOFF = 60000;
   const TYPING_PING_MS = 3000;   // how often "I'm typing" is sent while a draft is being written
   const GROUP_GAP_MS = 5 * 60000; // messages from one person closer than this share one avatar/name
+  const GLOBAL = "#global";       // the global room, in place of a friend's username in state.active
 
   const state = {
-    me: "", friends: [], active: "", messages: [], rev: "", max: 60,
+    me: "", friends: [], active: "", messages: [], rev: "", grev: "", max: 60, globalOff: false,
     loading: false, again: false, fails: 0, timer: 0, dead: false, sending: false,
     wanted: "",             // #with=<name> still waiting for the friend list
     lastPing: 0,
@@ -46,6 +53,7 @@
   const toast = (m) => (window.showToast ? window.showToast(m, 3200) : console.log(m));
   const cleanName = (v) => String(v || "").trim().replace(/^@/, "").toLowerCase();
   const visibleNow = () => document.visibilityState === "visible" && document.hasFocus();
+  const inGlobal = () => state.active === GLOBAL;
 
   // Same small DOM helper everywhere; all user text goes in through
   // textContent, never innerHTML.
@@ -88,7 +96,7 @@
   // Only counts as read while the conversation is really in front of the person;
   // a message that lands in a hidden tab stays unread (and notifies).
   function markActiveSeen() {
-    if (!state.active || !visibleNow()) return;
+    if (!state.active || inGlobal() || !visibleNow()) return;
     const last = state.messages[state.messages.length - 1];
     if (!last || last.pending) return;
     if (M) M.markSeen(state.active, last.ts); else markSeenLocal(state.active, last.ts);
@@ -146,8 +154,11 @@
     if (state.dead) return;
     if (state.loading) { if (force) state.again = true; return; }
     state.loading = true;
+    const asked = state.active;     // the conversation this answer is for
     try {
-      const data = await get({ with: state.active, rev: force ? "" : state.rev });
+      const data = await get(asked === GLOBAL
+        ? { room: "global", rev: force ? "" : state.rev, grev: force ? "" : state.grev }
+        : { with: asked, rev: force ? "" : state.rev });
       state.fails = 0;
 
       if (!data || data.ok !== true) {
@@ -168,14 +179,28 @@
       state.me = data.me || state.me;
       paintMe();
       state.rev = data.rev || state.rev;
+      state.grev = data.grev || state.grev;
       net("live", "Live");
       // Typing flags ride on every answer, even "unchanged" ones.
-      if (M) M.ingest(data, { viewing: state.active });
+      if (M) M.ingest(data, { viewing: inGlobal() ? "" : state.active });
       if (data.unchanged) return;
 
       state.max = data.max || 60;
       state.friends = Array.isArray(data.friends) ? data.friends : [];
-      if (state.active && !state.friends.some((f) => f.name === state.active && f.status === "friend")) {
+      if (inGlobal()) {
+        // An answer meant for another conversation (the person switched while it
+        // was in flight) is skipped; the refresh queued by open() follows it.
+        if (asked === GLOBAL) {
+          // No `global` in the answer = a data.gs from before the global room.
+          state.globalOff = !data.global;
+          if (data.global) {
+            state.max = data.global.max || 100;
+            const listed = data.global.messages || [];
+            const pending = state.sending ? state.messages.filter((m) => m.pending) : [];
+            state.messages = listed.concat(pending.filter((p) => !listed.some((m) => m.from === p.from && m.text === p.text && m.ts >= p.ts - 60000)));
+          }
+        }
+      } else if (state.active && !state.friends.some((f) => f.name === state.active && f.status === "friend")) {
         state.active = "";        // removed (by either of you) or never accepted
         state.messages = [];
         if (M) M.setViewing("");
@@ -212,6 +237,21 @@
     refresh(true);
   }
 
+  // Friend request to `name`; true when it went through.
+  async function sendRequest(name) {
+    try {
+      const r = await post("request", { to: name });
+      if (!r || r.ok !== true) throw new Error((r && r.error) || "Couldn't send that request.");
+      toast(r.state === "friend" ? `You and @${name} are friends now` : r.state === "outgoing" ? `Request sent to @${name}` : "Done");
+      return true;
+    } catch (err) {
+      toast(err.message || "Couldn't send that request.");
+      return false;
+    } finally {
+      refresh(true);
+    }
+  }
+
   $("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = $("addName");
@@ -220,15 +260,9 @@
     if (name === state.me) return toast("That's you!");
     $("addBtn").disabled = true;
     try {
-      const r = await post("request", { to: name });
-      if (!r || r.ok !== true) throw new Error((r && r.error) || "Couldn't send that request.");
-      input.value = "";
-      toast(r.state === "friend" ? `You and @${name} are friends now` : r.state === "outgoing" ? `Request sent to @${name}` : "Done");
-    } catch (err) {
-      toast(err.message || "Couldn't send that request.");
+      if (await sendRequest(name)) input.value = "";
     } finally {
       $("addBtn").disabled = false;
-      refresh(true);
     }
   });
 
@@ -237,8 +271,9 @@
     state.messages = [];
     state.rev = "";
     state.lastPing = 0;
+    closeUserMenu();
     $("chat").classList.add("open");
-    if (M) M.setViewing(name);
+    if (M) M.setViewing(name === GLOBAL ? "" : name);
     renderFriends();
     renderConversation();
     refresh(true);
@@ -246,6 +281,7 @@
   }
 
   function closeConversation() {
+    closeUserMenu();
     state.active = "";
     state.rev = "";
     if (M) M.setViewing("");
@@ -269,14 +305,20 @@
   // #with=<username> (notification click, or a link): open that conversation as
   // soon as the friend list is known.
   function wantFromHash() {
+    if (/(?:^#|&)global(?:&|$)/.test(location.hash || "")) {
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+      if (!inGlobal()) open(GLOBAL);
+      return true;
+    }
     const m = /(?:^#|&)with=([^&]+)/.exec(location.hash || "");
-    if (!m) return;
+    if (!m) return false;
     let n = "";
-    try { n = cleanName(decodeURIComponent(m[1])); } catch (_) { return; }
-    if (!NAME_RE.test(n)) return;
+    try { n = cleanName(decodeURIComponent(m[1])); } catch (_) { return false; }
+    if (!NAME_RE.test(n)) return false;
     state.wanted = n;
     openWanted();
     try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+    return true;
   }
   function openWanted() {
     if (!state.wanted || !state.friends.length) return;
@@ -290,6 +332,12 @@
     const box = $("msg");
     const text = box.value.trim();
     if (!text || !state.active || state.sending) return;
+    const room = inGlobal();
+    // Global chat is public, so it gets the same word filter as nicknames and
+    // ticket reasons (wordfilter.js; checked here, in the browser).
+    if (room && window.WS_WordFilter && window.WS_WordFilter.find(text)) {
+      return toast("Something in that message isn't allowed in global chat. Try rewording it.");
+    }
     state.sending = true;
     const to = state.active;
     box.value = "";
@@ -300,7 +348,7 @@
     state.messages.push(tmp);
     renderThread(true);
     try {
-      const r = await post("send", { to, text });
+      const r = await post("send", room ? { room: "global", text } : { to, text });
       if (!r || r.ok !== true) throw new Error((r && r.error) || "Couldn't send that.");
     } catch (err) {
       state.messages = state.messages.filter((m) => m !== tmp);
@@ -323,7 +371,7 @@
     // Real typing: tell the friend while there's an unsent draft, at most every few seconds.
     if (!$("msg").value.trim()) { state.lastPing = 0; return; }
     const now = Date.now();
-    if (M && state.active && now - state.lastPing >= TYPING_PING_MS) {
+    if (M && state.active && !inGlobal() && now - state.lastPing >= TYPING_PING_MS) {
       state.lastPing = now;
       M.sendTyping(state.active);
     }
@@ -376,6 +424,12 @@
     const outgoing = state.friends.filter((f) => f.status === "outgoing");
     const s = seen();
 
+    // Global chat is always first: open to everyone, no friend needed.
+    list.append(el("button", { class: "conv-row global" + (inGlobal() ? " on" : ""), type: "button", onclick: () => open(GLOBAL) },
+      el("span", { class: "ws-av global-av", "aria-hidden": "true" }, icon("fa-solid fa-earth-americas")),
+      el("span", { class: "tx" }, el("span", { class: "nm", text: "Global chat" }), el("span", { class: "pv", text: "Everyone with a ticket · no friend request needed" }))
+    ));
+
     if (incoming.length) {
       list.append(el("div", { class: "group", text: `Requests (${incoming.length})` }));
       for (const f of incoming) {
@@ -390,7 +444,7 @@
 
     list.append(el("div", { class: "group", text: "Conversations" }));
     if (!friends.length) {
-      list.append(el("div", { class: "empty", text: incoming.length ? "Accept a request to start chatting." : "No friends yet. Add someone by their username above." }));
+      list.append(el("div", { class: "empty", text: incoming.length ? "Accept a request to start chatting." : "No friends yet. Add someone by their username above, or click a name in Global chat." }));
     }
     for (const f of friends) {
       const unread = !!f.last && f.last.from !== state.me && f.last.ts > (s[f.name] || 0) && !(f.name === state.active && visibleNow());
@@ -416,6 +470,8 @@
     list.scrollTop = keep;
   }
 
+  const peerTitle = () => (inGlobal() ? "Global chat" : shown(state.active));
+
   function renderConversation() {
     const on = !!state.active;
     $("idle").hidden = on;
@@ -425,9 +481,14 @@
     if (holder.dataset.for !== state.active) {
       holder.dataset.for = state.active;
       holder.textContent = "";
-      holder.append(avatar(state.active));
+      holder.append(inGlobal() ? el("span", { class: "ws-av global-av" }, icon("fa-solid fa-earth-americas")) : avatar(state.active));
     }
-    $("peer").textContent = shown(state.active);
+    $("peer").textContent = peerTitle();
+    $("removeBtn").hidden = inGlobal();
+    $("msg").placeholder = inGlobal() ? "Message everyone… (Enter to send)" : "Message… (Enter to send)";
+    $("keepNote").textContent = inGlobal()
+      ? `global chat is public to everyone with a ticket · only the latest ${state.max} messages are kept`
+      : `only the latest ${state.max} messages are kept`;
     paintTyping();
     renderThread(false);
   }
@@ -436,11 +497,11 @@
   function paintTyping() {
     const row = $("typingRow");
     const sub = $("peerSub");
-    const on = !!state.active && isTyping(state.active);
+    const on = !!state.active && !inGlobal() && isTyping(state.active);
     const line = on ? typingLine(state.active) : "";
     if (sub) {
       sub.className = on ? "typing" : "";
-      sub.textContent = on ? line : state.active ? "@" + state.active : "";
+      sub.textContent = on ? line : inGlobal() ? "Everyone with a ticket can read and post here" : state.active ? "@" + state.active : "";
     }
     if (!row) return;
     if (!on) { if (row.firstChild) row.textContent = ""; return; }
@@ -460,7 +521,9 @@
     const n = state.messages.length;
     $("cap").textContent = n ? `${Math.min(n, state.max)}/${state.max}` : "";
     if (!n) {
-      box.append(el("div", { class: "empty", text: `Say hi to ${shown(state.active)}!` }));
+      box.append(el("div", { class: "empty", text: state.globalOff && inGlobal()
+        ? "Global chat isn't switched on yet. Redeploy data.gs (WS-DATA-15 or newer) and reload this page."
+        : inGlobal() ? "Nobody has said anything yet. Say hi to everyone!" : `Say hi to ${shown(state.active)}!` }));
       return;
     }
     if (n >= state.max) box.append(el("div", { class: "note", text: "Older messages are deleted automatically to keep the latest " + state.max + "." }));
@@ -472,9 +535,14 @@
       const mine = m.from === state.me;
       // A new run starts for a different sender or after a pause.
       if (!grp || !prev || prev.from !== m.from || m.ts - prev.ts > GROUP_GAP_MS) {
+        // In global chat, other people's names and pictures open a small menu
+        // (add friend / message) so strangers can connect.
+        const person = (node) => (inGlobal() && !mine
+          ? el("button", { class: "who-btn", type: "button", title: "@" + m.from, "aria-label": "Options for " + shown(m.from), onclick: (e) => showUserMenu(m.from, e.currentTarget) }, node)
+          : node);
         stack = el("div", { class: "stack" },
-          el("div", { class: "by" }, nameTag("b", m.from), " · " + (m.pending ? "sending…" : fmtTime(m.ts))));
-        grp = el("div", { class: "grp " + (mine ? "me" : "them") }, avatar(m.from, "sm"), stack);
+          el("div", { class: "by" }, person(nameTag("b", m.from)), " · " + (m.pending ? "sending…" : fmtTime(m.ts))));
+        grp = el("div", { class: "grp " + (mine ? "me" : "them") }, person(avatar(m.from, "sm")), stack);
         box.append(grp);
       }
       stack.append(el("div", { class: "bubble" + (m.pending ? " pending" : ""), title: m.pending ? "" : fmtTime(m.ts), text: m.text }));
@@ -488,13 +556,60 @@
     paintTyping();
     renderFriends();
     refreshNames();
-    if (state.active) $("peer").textContent = shown(state.active);
+    if (state.active) $("peer").textContent = peerTitle();
     paintMe();
     const n = detail && detail.unread ? detail.unread.length : 0;
     $("unreadBadge").hidden = !n;
     $("unreadBadge").textContent = String(n);
     document.title = (n ? `(${n}) ` : "") + "Messages · WannaSmile4Evr";
   }
+
+  // ── the little menu on a name in global chat ──────────────────────────
+  function closeUserMenu() {
+    const m = $("userMenu");
+    if (m) { m.hidden = true; m.dataset.for = ""; }
+  }
+
+  function showUserMenu(name, anchor) {
+    const menu = $("userMenu");
+    if (!menu) return;
+    if (!menu.hidden && menu.dataset.for === name) return closeUserMenu();   // same name again = toggle
+    const f = state.friends.find((x) => x.name === name);
+    const go = (fn) => () => { closeUserMenu(); fn(); };
+    let action;
+    if (f && f.status === "friend") {
+      action = el("button", { class: "btn sm", type: "button", onclick: go(() => open(name)) }, icon("fa-solid fa-comment"), " Message");
+    } else if (f && f.status === "incoming") {
+      action = el("button", { class: "btn sm", type: "button", onclick: go(() => act("accept", { from: name }, `You and @${name} are friends now`)) }, icon("fa-solid fa-check"), " Accept request");
+    } else if (f && f.status === "outgoing") {
+      action = el("button", { class: "btn ghost sm", type: "button", disabled: true }, icon("fa-solid fa-hourglass-half"), " Request sent");
+    } else {
+      action = el("button", { class: "btn sm", type: "button", onclick: go(() => sendRequest(name)) }, icon("fa-solid fa-user-plus"), " Add friend");
+    }
+    menu.textContent = "";
+    menu.append(
+      el("div", { class: "um-head" }, avatar(name, "sm"), el("span", { class: "um-who" }, nameTag("b", name), el("small", { text: "@" + name }))),
+      action
+    );
+    menu.dataset.for = name;
+    menu.hidden = false;
+    // Under the name that was clicked, kept inside the window.
+    const r = anchor.getBoundingClientRect();
+    const w = menu.offsetWidth, h = menu.offsetHeight;
+    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
+    const top = r.bottom + 6 + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6;
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+    (menu.querySelector("button:not([disabled])") || menu).focus({ preventScroll: true });
+  }
+
+  document.addEventListener("click", (e) => {
+    const m = $("userMenu");
+    if (m && !m.hidden && !m.contains(e.target) && !(e.target.closest && e.target.closest(".who-btn"))) closeUserMenu();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeUserMenu(); });
+  window.addEventListener("resize", closeUserMenu);
+  $("thread").addEventListener("scroll", closeUserMenu, { passive: true });
 
   // ── start ─────────────────────────────────────────────────────────────
   function start() {
@@ -521,9 +636,14 @@
       });
       M.on(onMsgChange);
     }
-    wantFromHash();
+    // The word filter list (global chat is public) loads in the background.
+    try { window.WS_WordFilter && window.WS_WordFilter.load(); } catch (_) {}
+    // A link to a conversation wins; otherwise a wide window opens Global chat,
+    // so there's something to read straight away (on a phone the list comes first).
+    const linked = wantFromHash();
     window.addEventListener("hashchange", () => { wantFromHash(); });
-    refresh(true);
+    if (!linked && !state.wanted && window.matchMedia("(min-width: 761px)").matches) open(GLOBAL);
+    else if (!inGlobal()) refresh(true);
 
     document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(false); markActiveSeen(); renderFriends(); } });
     window.addEventListener("focus", () => { refresh(false); markActiveSeen(); renderFriends(); });
