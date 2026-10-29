@@ -194,10 +194,12 @@
           // No `global` in the answer = a data.gs from before the global room.
           state.globalOff = !data.global;
           if (data.global) {
-            state.max = data.global.max || 100;
-            const listed = data.global.messages || [];
+            state.max = data.global.max || 120;
+            // Oldest first; equal timestamps keep the order the server listed them (stable sort).
+            const listed = (data.global.messages || []).map((m, i) => ({ m, i })).sort((a, b) => ((a.m.ts || 0) - (b.m.ts || 0)) || (a.i - b.i)).map((x) => x.m);
             const pending = state.sending ? state.messages.filter((m) => m.pending) : [];
             state.messages = listed.concat(pending.filter((p) => !listed.some((m) => m.from === p.from && m.text === p.text && m.ts >= p.ts - 60000)));
+            if (state.messages.length > state.max) state.messages = state.messages.slice(-state.max);
           }
         }
       } else if (state.active && !state.friends.some((f) => f.name === state.active && f.status === "friend")) {

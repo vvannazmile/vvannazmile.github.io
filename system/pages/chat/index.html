@@ -161,6 +161,13 @@ div.conv-row { cursor: default; }
 .me .bubble + .bubble { border-radius: 16px 4px 4px 16px; }
 .bubble.pending { opacity: 0.6; }
 .bubble[title] { cursor: default; }
+.who-btn { background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; cursor: pointer; display: inline-flex; align-items: center; }
+.user-menu { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: #1c1c24; border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+.user-menu[hidden] { display: none; }
+.um-head { display: flex; align-items: center; gap: 8px; }
+.um-who { display: flex; flex-direction: column; line-height: 1.2; }
+.um-who small { opacity: 0.7; }
+.global-av { display: inline-flex; align-items: center; justify-content: center; }
 
 /* "is typing" row, always reserves its height so nothing jumps */
 .typing-row { flex: none; min-height: 28px; display: flex; align-items: center; gap: 8px; padding: 2px 16px 4px; font-size: 0.76rem; font-style: italic; opacity: 0.9; }
@@ -238,12 +245,13 @@ div.conv-row { cursor: default; }
             <textarea id="msg" rows="1" maxlength="500" placeholder="Message… (Enter to send)" aria-label="Message"></textarea>
             <button class="btn" id="sendBtn" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send</button>
           </form>
-          <div class="count"><span id="left">500</span> characters left · only the latest 60 messages are kept</div>
+          <div class="count"><span id="left">500</span> characters left · <span id="keepNote">only the latest 60 messages are kept</span></div>
         </div>
       </div>
     </section>
   </div>
 </div>
+<div class="user-menu" id="userMenu" hidden></div>
 
 <script src="../../js/endpoints.js"></script>
 <script src="../../js/utils.js"></script>
