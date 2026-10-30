@@ -84,7 +84,7 @@ These are the contributors to WannaSmile. Check out their profiles and drop them
   <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io/graphs/commit-activity">Commit Activity</a>
 </p>
 
-## 🚀 Getting Started
+## Getting Started
 
 Visit the live website to explore the project:
 
@@ -104,7 +104,7 @@ cd wannasmile4evr.github.io
 
 Open `index.html` in VS Code and use a local development server to test changes. Some features depend on external services and may require configured endpoints and access permissions.
 
-## 📁 Repository Structure
+## Repository Structure
 
 | Path | Purpose |
 |---|---|
