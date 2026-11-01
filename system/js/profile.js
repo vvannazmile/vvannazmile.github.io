@@ -27,13 +27,19 @@ const FRAME_KEY     = "pfpFrame";
 const WRAPPER_KEY         = "pfpWrapper";
 const WRAPPER_OPACITY_KEY = "pfpWrapperOpacity";
 const FRAME_GIF_MAX = 1.5 * 1024 * 1024;   // uploaded frames are stored as-is, so keep them small
+const PROFILE_GIF_MAX = 1.5 * 1024 * 1024;
 
 const DEFAULT_PIC = "https://raw.githubusercontent.com/bguhm/bguhm.github.io/main/system/images/profile.png";
+
+function isGifImage(src) {
+  return /^(?:data:image\/gif(?:;|,)|.*\.gif(?:[?#]|$))/i.test(String(src || ""));
+}
 
 const PIXEL_BLOCKS = 32;
 const PIXEL_OUTPUT  = 300;
 
 let _pixelCache = { src: null, blocks: null, data: null };
+let _picRenderId = 0;
 
 function pixelateImageData(srcUrl, blocks = PIXEL_BLOCKS, outSize = PIXEL_OUTPUT) {
   return new Promise((resolve, reject) => {
@@ -202,10 +208,13 @@ function paintBanner(src) {
 // Shows a picture in an <img>, pixelated or not.
 function paintPic(img, src, pixelated, crisp) {
   if (!img) return;
+  const renderId = String(++_picRenderId);
+  img.dataset.wsPicRenderId = renderId;
   img.src = src;
   img.style.imageRendering = "";
-  if (!pixelated) return;
+  if (!pixelated || isGifImage(src)) return;
   getPixelatedSrc(src).then((dataUrl) => {
+    if (img.dataset.wsPicRenderId !== renderId) return;
     img.src = dataUrl;
     if (crisp) img.style.imageRendering = "pixelated";
   }).catch(() => {});
@@ -301,6 +310,7 @@ function loadProfile() {
 }
 
 function saveProfile({ pic, name, pixelated, banner, align, frame, wrapper, wrapperOpacity } = {}) {
+  let picSaved = true;
   try {
     if (wrapper !== undefined) { if (wrapper) localStorage.setItem(WRAPPER_KEY, wrapper); else localStorage.removeItem(WRAPPER_KEY); }
     if (wrapperOpacity !== undefined) { if (wrapperOpacity !== "" && wrapperOpacity !== "100") localStorage.setItem(WRAPPER_OPACITY_KEY, wrapperOpacity); else localStorage.removeItem(WRAPPER_OPACITY_KEY); }
@@ -322,10 +332,17 @@ function saveProfile({ pic, name, pixelated, banner, align, frame, wrapper, wrap
       if (typeof showToast === "function") showToast("❌ That banner is too big to save. Try a smaller image.");
     }
   }
-  if (pic      !== undefined) localStorage.setItem("profilePic",    pic);
+  if (pic !== undefined) {
+    try { localStorage.setItem("profilePic", pic); }
+    catch (_) {
+      picSaved = false;
+      if (typeof showToast === "function") showToast("❌ That picture couldn't be saved. Try a smaller image or free up browser storage.");
+    }
+  }
   if (name     !== undefined) localStorage.setItem("nickname",      name);
   if (pixelated !== undefined) localStorage.setItem("pfpPixelated", pixelated ? "true" : "false");
   loadProfile();
+  return picSaved;
 }
 
 // ── Advanced editing ───────────────────────────────────────────────────
@@ -408,6 +425,7 @@ function renderPfpGrid() {
   const own = [saved, _pending.pic].filter((p, i, a) => p && p !== DEFAULT_PIC && !PROFILE_IMAGES.includes(p) && a.indexOf(p) === i);
   own.forEach(src => tiles.push(makeTile({
     value: src, img: src, label: "Yours", index: tiles.length,
+    tag: isGifImage(src) ? "GIF" : "",
     onPick: () => pickPic(src),
   })));
   PROFILE_IMAGES.forEach(src => tiles.push(makeTile({
@@ -948,13 +966,15 @@ window.addEventListener("DOMContentLoaded", () => {
     if (pfpGrid) pfpGrid.hidden = on;
   };
 
-  // Opens the 1:1 cropper on any picture: an upload (data URL) or one of
-  // the library's own (a URL; Cropper loads it with CORS so it can be
-  // cut out — if a host refuses, the crop falls back to using it as-is).
+  // Opens the 1:1 cropper on any picture. Cropping a GIF intentionally
+  // produces a still; uploaded GIFs otherwise stay animated.
   startPicCrop = (src) => {
     if (!cropPreviewImg) { setPending("pic", src); return; }
     loadCropper().then((ok) => {
       if (!ok) { setPending("pic", src); return; }
+      if (isGifImage(src) && typeof showToast === "function") {
+        showToast("Cropping a GIF turns it into a still image. Cancel to keep it animated.");
+      }
       libraryEl("pfp").hidden = false;
       showCrop(true);
       if (cropper) cropper.destroy();
@@ -966,9 +986,35 @@ window.addEventListener("DOMContentLoaded", () => {
 
   fileInput?.addEventListener("change", (e) => {
     const file = e.target.files[0];
+    fileInput.value = "";
     if (!file) return;
+    if (file.type && !file.type.startsWith("image/")) {
+      if (typeof showToast === "function") showToast("❌ That file isn't an image.");
+      return;
+    }
+    const isGif = file.type.toLowerCase() === "image/gif" || /\.gif$/i.test(file.name);
+    if (isGif && file.size > PROFILE_GIF_MAX) {
+      if (typeof showToast === "function") showToast("❌ That GIF is over 1.5 MB. Try a smaller one.");
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = (ev) => startPicCrop(ev.target.result);
+    reader.onerror = () => { if (typeof showToast === "function") showToast("❌ That file couldn't be read."); };
+    reader.onload = (ev) => {
+      const src = ev.target?.result;
+      if (typeof src !== "string" || !src) {
+        if (typeof showToast === "function") showToast("❌ That file couldn't be read.");
+        return;
+      }
+      if (isGif) {
+        if (advancedEditing()) startPicCrop(src);
+        else {
+          setPending("pic", src);
+          if (typeof showToast === "function") showToast("GIF profile pictures stay animated. Turn on Advanced editing if you'd like to crop one.");
+        }
+        return;
+      }
+      startPicCrop(src);
+    };
     reader.readAsDataURL(file);
   });
 
@@ -1005,7 +1051,7 @@ window.addEventListener("DOMContentLoaded", () => {
       startNameEdit();
       return;
     }
-    saveProfile({
+    const saved = saveProfile({
       pic:       _pending.pic,
       // Empty nickname = show the username (only if there is one to fall
       // back on; otherwise keep the old nickname).
@@ -1017,6 +1063,7 @@ window.addEventListener("DOMContentLoaded", () => {
       wrapper:   _pending.wrapper,
       wrapperOpacity: _pending.wrapperOpacity,
     });
+    if (!saved) return;
     resetPending();
     if (typeof showToast === "function") showToast("✅ Profile saved.");
     closeProfileOverlay();
