@@ -156,6 +156,18 @@
 .pf-gear-menu button:hover, .pf-gear-menu button:focus-visible { background: rgba(255, 255, 255, 0.1); outline: none; }
 .pf-gear-menu [aria-checked="true"] { background: rgba(255, 255, 255, 0.08); }
 .pf-gear-menu [role="menuitemcheckbox"][aria-checked="true"]::after { content: "✓"; margin-left: auto; color: var(--accent-color, #f44); }
+.pf-gear-menu .pf-gear-reset {
+  flex: none;
+  min-width: 42px;
+  min-height: 28px;
+  justify-content: center;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  font-size: 0.75em;
+}
+.pf-gear-menu .pf-gear-reset:hover,
+.pf-gear-menu .pf-gear-reset:focus-visible { border-color: var(--accent-color, #f44); }
 
 /* Picture position: a three-way segmented pick. */
 .pf-gear-group {
@@ -173,6 +185,31 @@
   opacity: 0.7;
 }
 .pf-align-choices { display: flex; gap: 4px; }
+.pf-shape-choices { display: flex; gap: 4px; }
+.pf-gear-menu .pf-shape-choices button {
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 3px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.72em;
+  text-align: center;
+}
+.pf-shape-swatch {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  background: rgba(255, 255, 255, 0.1);
+}
+.pf-shape-choices [data-avatar-shape="circle"] .pf-shape-swatch { border-radius: 50%; }
+.pf-shape-choices [data-avatar-shape="rounded"] .pf-shape-swatch { border-radius: 22%; }
+.pf-shape-choices [data-avatar-shape="square"] .pf-shape-swatch { border-radius: 0; }
+.pf-gear-menu .pf-shape-choices [aria-pressed="true"] {
+  background: var(--accent-color, #f44);
+  border-color: var(--accent-color, #f44);
+  color: #fff;
+}
 .pf-gear-menu .pf-align-choices button {
   flex: 1;
   flex-direction: column;
@@ -260,6 +297,15 @@
   background: rgba(255, 255, 255, 0.08);
   transition: filter 0.15s ease;
 }
+#profileOverlayPanel .pf-avatar-btn,
+.profile-preview,
+#pfp { border-radius: 50%; }
+.pf-avatar-btn[data-avatar-shape="rounded"],
+.profile-preview[data-avatar-shape="rounded"],
+#pfp[data-avatar-shape="rounded"] { border-radius: 22%; }
+.pf-avatar-btn[data-avatar-shape="square"],
+.profile-preview[data-avatar-shape="square"],
+#pfp[data-avatar-shape="square"] { border-radius: 0; }
 .pf-avatar-pencil {
   inset: 0;
   margin: auto;
@@ -308,6 +354,20 @@
 .profile-head[data-align="right"] { flex-direction: row-reverse; }
 .profile-head[data-align="right"] .profile-head-text { text-align: right; }
 .profile-head[data-align="right"] .pf-name-row { justify-content: flex-end; }
+.profile-head[data-layout="vertical"] {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.profile-head[data-layout="vertical"] .profile-head-text {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  padding-bottom: 0;
+  text-align: center;
+}
+.profile-head[data-layout="vertical"] .pf-name-row { justify-content: center; }
+.profile-head[data-layout="vertical"] .profile-overlay-handle { text-align: center; }
 .pf-name-row {
   display: flex;
   align-items: center;
@@ -410,18 +470,21 @@
   box-shadow: -8px 8px 0 var(--accent-color, #f44);
   animation: pf-slide-left 0.4s cubic-bezier(.3, 1.4, .5, 1);
 }
-/* Frames: its own side modal, laid on top of the pictures library at the top of
-   the left column. It is fixed, so it never pushes the pictures library down. */
+/* Frames dock above the centred preview without changing its layout. */
 .pf-library-frames {
-  left: clamp(26px, 3.4vw, 64px);
-  top: clamp(14px, 4vh, 44px);
-  z-index: 3;
-  max-height: min(50vh, 460px);
-  transform: rotate(-0.8deg);
-  box-shadow: -8px 8px 0 var(--accent-color, #f44);
-  animation: pf-slide-frames 0.4s cubic-bezier(.3, 1.4, .5, 1);
+  position: absolute;
+  top: auto;
+  right: auto;
+  bottom: calc(100% + clamp(14px, 2.2vh, 24px));
+  left: 50%;
+  width: min(var(--pf-side-w), 100%);
+  max-height: min(44vh, 390px);
+  z-index: 12;
+  transform: translateX(-50%);
+  box-shadow: 6px 6px 0 var(--accent-color, #f44);
+  animation: pf-drop-frames 0.35s cubic-bezier(.22, 1, .36, 1);
 }
-@keyframes pf-slide-frames { from { opacity: 0; transform: translate(-40px, 0) rotate(-4deg); } }
+@keyframes pf-drop-frames { from { opacity: 0; transform: translate(-50%, 14px) rotate(-1deg); } }
 .pf-library-right {
   right: clamp(12px, 2vw, 36px);
   transform: translateY(-50%) rotate(-0.6deg);
@@ -627,7 +690,7 @@
 @media (max-width: 720px) {
   .pf-center { width: 100%; }
   .pf-library { width: calc(100vw - 28px); left: 14px; right: 14px; }
-  .pf-library-frames { top: 14px; }
+  .pf-library-frames { width: 100%; left: 50%; right: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -639,9 +702,68 @@
 
 .frame-grid { grid-template-columns: repeat(auto-fill, minmax(clamp(64px, 8.5vh, 104px), 1fr)); }
 .frame-grid .pf-tile img { border-radius: 6px; object-fit: contain; padding: 4px; }
-.frame-grid .pf-tile.is-none .pf-tile-upload { aspect-ratio: 1; border-radius: 50%; background: rgba(0, 0, 0, 0.35); }
 .pf-library-foot [hidden] { display: none; }
 .frame-grid .pf-tile.is-missing img { opacity: 0.15; }
+.pf-frame-upload {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  font-size: 0.8em;
+}
+.pf-frame-viewport {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0 12px;
+  cursor: grab;
+  scroll-behavior: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color, #f44) transparent;
+  touch-action: pan-y;
+  user-select: none;
+}
+.pf-frame-viewport.is-dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+}
+.pf-frame-track {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.2vw, 14px);
+  width: max-content;
+  min-width: 100%;
+  padding: 2px calc(50% - clamp(40px, 4.5vh, 52px));
+}
+.pf-frame-slide {
+  flex: 0 0 clamp(80px, 9vh, 104px);
+  opacity: 0.58;
+  transform: scale(0.86);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(.22, 1, .36, 1), border-color 0.15s ease;
+}
+.pf-frame-slide.is-picked {
+  opacity: 1;
+  transform: scale(1);
+}
+.pf-frame-slide img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pf-frame-slide .pf-tile-upload,
+.pf-frame-slide.is-none .pf-tile-upload {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+}
+.pf-frame-viewport:focus-visible { outline: 2px solid var(--url-color, #fff); outline-offset: 2px; }
 
 /* ── Card wrapper: the card's background image, behind everything on it.
    Always fills 100% of the card's width; whatever height that leaves over

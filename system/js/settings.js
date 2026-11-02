@@ -1,5 +1,7 @@
 "use strict";
 
+const WS_SETTINGS_ASSET_BASE = new URL("../../assets/images/cloak-btn/", document.currentScript?.src || location.href);
+
 const _REAL_TITLE   = (function() {
 
   const stored = localStorage.getItem("_realTitle");
@@ -75,7 +77,7 @@ function _syncCloakBtn() {
   if (!btn) return;
   const img = btn.querySelector("img");
   if (img) {
-    img.src = isCloakOn() ? "https://ws.ankomstudios.com/images/cloak-btn/cloaked.png" : "https://ws.ankomstudios.com/images/cloak-btn/visable.png";
+    img.src = new URL(isCloakOn() ? "cloaked.png" : "visable.png", WS_SETTINGS_ASSET_BASE).href;
   }
 }
 
@@ -94,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const img = btn.querySelector("img");
   if (img) {
-    img.src = isCloakOn() ? "https://ws.ankomstudios.com/images/cloak-btn/cloaked.png" : "https://ws.ankomstudios.com/images/cloak-btn/visable.png";
+    img.src = new URL(isCloakOn() ? "cloaked.png" : "visable.png", WS_SETTINGS_ASSET_BASE).href;
   }
   btn.title = "Toggle tab cloak";
   btn.addEventListener("click", toggleCloak);

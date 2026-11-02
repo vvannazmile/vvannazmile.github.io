@@ -1,5 +1,7 @@
 "use strict";
 
+const WS_MAIN_ASSET_ROOT = new URL("../../assets/", document.currentScript?.src || location.href);
+
 (function initScrollPersistence() {
   const saveScroll = debounce(() => {
     sessionStorage.setItem("scrollY", String(Math.round(window.scrollY)));
@@ -2181,7 +2183,7 @@ window.addEventListener("load", () => {
 
       if (typeSet.has("grail")) {
         const grailEl = document.createElement("img");
-        grailEl.src = "https://ws.ankomstudios.com/images/type-overlayStyles/grail.png";
+        grailEl.src = new URL("images/type-overlayStyles/grail.png", WS_MAIN_ASSET_ROOT).href;
         grailEl.alt = "";
         grailEl.className = "grail-bg";
         wrapper.insertBefore(grailEl, wrapper.firstChild);
@@ -2216,7 +2218,7 @@ window.addEventListener("load", () => {
         const isDmca    = typeSet.has("dmca") || statusSet.has("dmca");
         const isBlocked = typeSet.has("blocked") || statusSet.has("blocked");
         if (isDmca || isBlocked) {
-          img.src = "https://ws.ankomstudios.com/images/placeholders/cooked.png";
+          img.src = new URL("images/placeholders/cooked.png", WS_MAIN_ASSET_ROOT).href;
           img.style.imageRendering = "pixelated";
         }
         card.classList.add("cooked");

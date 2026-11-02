@@ -169,45 +169,45 @@
       <!-- <a href="#" title="Coming soon">Ads and Partnerships</a> -->
       <div class="pages-anchor">
         <button class="arrowleft" onclick="prevPage()">
-          <img src="https://ws.ankomstudios.com/images/header-arrows/left-arrow.png" />
+          <img src="assets/images/header-arrows/left-arrow.png" />
         </button>
         <span class="page-indicator">...</span>
         <button class="arrowright" onclick="nextPage()">
-          <img src="https://ws.ankomstudios.com/images/header-arrows/right-arrow.png" />
+          <img src="assets/images/header-arrows/right-arrow.png" />
         </button>
         <a href="system/pages/store/index.html" target="_blank">STORE</a>
         <a href="system/pages/news/index.html" target="_blank">NEWS</a>
 
         <button class="mute-btn">
-          <img src="https://ws.ankomstudios.com/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
+          <img src="assets/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
         </button>
 
         <button class="Qtype">
-          <img src="https://ws.ankomstudios.com/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
+          <img src="assets/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
         </button>
 
         <button id="nes-btn">
-          <img src="https://ws.ankomstudios.com/images/panic-btn/deny.png" alt="Toggle">
+          <img src="assets/images/panic-btn/deny.png" alt="Toggle">
         </button>
 
 <button id="cloak-btn">
-  <img src="https://ws.ankomstudios.com/images/cloak-btn/cloaked.png" alt="CloakToggle">
+  <img src="assets/images/cloak-btn/cloaked.png" alt="CloakToggle">
 </button>
 
 <button id="fav-btn" title="Show favorites" aria-pressed="false">
-  <img src="https://ws.ankomstudios.com/images/fav-btn/unfav.gif" alt="Favorites toggle">
+  <img src="assets/images/fav-btn/unfav.gif" alt="Favorites toggle">
 </button>
 
         <button type="button" id="openDailyPicks" class="hdr-icon-btn" title="Daily picks" aria-label="Daily picks">
-          <img src="https://ws.ankomstudios.com/images/icons/daily.png" alt="" />
+          <img src="assets/images/icons/daily.png" alt="" />
         </button>
 
         <button type="button" id="openShortCuts" class="hdr-icon-btn" title="Shortcuts" aria-label="Keyboard shortcuts">
-          <img src="https://ws.ankomstudios.com/images/icons/shortcuts.png" alt="" />
+          <img src="assets/images/icons/shortcuts.png" alt="" />
         </button>
 
         <button type="button" id="openDm" class="hdr-icon-btn" title="Chat (DMs)" aria-label="Open WannaChat">
-          <img src="https://ws.ankomstudios.com/images/icons/dm.png" alt="" />
+          <img src="assets/images/icons/dm.png" alt="" />
         </button>
 
       </div>
@@ -294,7 +294,7 @@
       <h3 id="pfpLibraryTitle">Profile pictures</h3>
       <button type="button" class="pf-icon-btn pf-library-close" data-close-library="pfp" aria-label="Close profile pictures"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
     </div>
-    <p class="pf-adv-hint"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Advanced editing: pick a picture to crop it.</p>
+    <p class="pf-adv-hint"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Advanced editing crops still pictures; GIFs stay animated.</p>
     <div id="pfpGrid" class="pf-library-grid pfp-grid"></div>
     <div id="cropContainer" class="pf-crop" style="display:none;">
       <img id="cropPreview" alt="Crop your picture">
@@ -309,21 +309,25 @@
     <input type="file" id="profilePicInput" accept="image/*" hidden>
   </aside>
 
-  <!-- Left, stacked on top of the pictures library: picture frames (its own side modal) -->
-  <aside id="framesLibrary" class="pf-library pf-library-frames" role="dialog" aria-labelledby="framesLibraryTitle" hidden>
-    <div class="pf-library-head">
-      <h3 id="framesLibraryTitle">Picture frames</h3>
-      <button type="button" class="pf-icon-btn pf-library-close" data-close-library="frames" aria-label="Close picture frames"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-    </div>
-    <div id="frameGrid" class="pf-library-grid pfp-grid frame-grid"></div>
-    <div class="pf-library-foot">
-      <button type="button" id="removeFrameBtn" class="overlay-btn remove-btn"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove frame</button>
-    </div>
-    <input type="file" id="profileFrameInput" accept="image/png,image/webp,image/gif,image/apng" hidden>
-  </aside>
-
   <!-- Centre: the profile card, with Save below it -->
   <div class="pf-center">
+    <!-- Frames dock above the preview without affecting its centred position. -->
+    <aside id="framesLibrary" class="pf-library pf-library-frames" role="dialog" aria-labelledby="framesLibraryTitle" hidden>
+      <div class="pf-library-head">
+        <h3 id="framesLibraryTitle">Picture frames</h3>
+        <button type="button" id="uploadFrameBtn" class="pf-icon-btn pf-frame-upload" title="Upload your own frame" aria-label="Upload your own frame"><i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i></button>
+        <button type="button" class="pf-icon-btn pf-library-close" data-close-library="frames" aria-label="Close picture frames"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <p class="pf-library-msg" id="frameMessage" hidden></p>
+      <div id="frameViewport" class="pf-frame-viewport" role="listbox" aria-label="Profile frames" tabindex="0">
+        <div id="frameGrid" class="pf-frame-track"></div>
+      </div>
+      <div class="pf-library-foot">
+        <button type="button" id="removeFrameBtn" class="overlay-btn remove-btn"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove frame</button>
+      </div>
+      <input type="file" id="profileFrameInput" accept="image/png,image/webp,image/gif,image/apng" hidden>
+    </aside>
+
     <div id="profileOverlayPanel" role="dialog" aria-modal="true" aria-labelledby="profileOverlayTitle" tabindex="-1">
       <div id="profileWrapper" class="pf-wrapper" aria-hidden="true" hidden></div>
       <div id="profileBanner" class="profile-banner" role="button" tabindex="0" aria-label="Change banner">
@@ -341,7 +345,32 @@
             <button type="button" role="menuitem" data-open-library="wrappers"><i class="fa-solid fa-image" aria-hidden="true"></i> Card wrapper</button>
             <button type="button" role="menuitem" data-open-library="banner"><i class="fa-solid fa-panorama" aria-hidden="true"></i> Banners</button>
             <button type="button" role="menuitemcheckbox" id="pixelToggleBtn" aria-checked="false"><i class="fa-solid fa-border-all" aria-hidden="true"></i> <span>Pixelate picture</span></button>
-            <button type="button" role="menuitemcheckbox" id="advancedEditBtn" aria-checked="false" title="Crop any picture or banner before using it"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> <span>Advanced editing</span></button>
+            <button type="button" role="menuitemcheckbox" id="advancedEditBtn" aria-checked="false" title="Crop still pictures and banners before using them. GIF profile pictures stay animated."><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> <span>Advanced editing</span></button>
+            <div class="pf-gear-group" role="group" aria-labelledby="profileAvatarSizeLabel">
+              <span id="profileAvatarSizeLabel" class="pf-gear-label">Profile picture size</span>
+              <div class="pf-opacity">
+                <input type="range" id="profileAvatarSize" min="80" max="190" step="5" value="135" aria-labelledby="profileAvatarSizeLabel">
+                <output id="profileAvatarSizeValue" for="profileAvatarSize">135 px</output>
+                <button type="button" class="pf-gear-reset" id="resetAvatarSizeBtn" aria-label="Reset profile picture size">Reset</button>
+              </div>
+            </div>
+            <div class="pf-gear-group" role="group" aria-labelledby="profileAvatarShapeLabel">
+              <span id="profileAvatarShapeLabel" class="pf-gear-label">Picture shape</span>
+              <div id="profileAvatarShapeChoices" class="pf-shape-choices">
+                <button type="button" data-avatar-shape="circle" aria-pressed="true"><span class="pf-shape-swatch" aria-hidden="true"></span>Circle</button>
+                <button type="button" data-avatar-shape="rounded" aria-pressed="false"><span class="pf-shape-swatch" aria-hidden="true"></span>Rounded</button>
+                <button type="button" data-avatar-shape="square" aria-pressed="false"><span class="pf-shape-swatch" aria-hidden="true"></span>Square</button>
+              </div>
+            </div>
+            <div class="pf-gear-group" role="group" aria-labelledby="profileFrameScaleLabel">
+              <span id="profileFrameScaleLabel" class="pf-gear-label">Frame size</span>
+              <div class="pf-opacity">
+                <input type="range" id="profileFrameScale" min="100" max="200" step="5" value="120" aria-labelledby="profileFrameScaleLabel">
+                <output id="profileFrameScaleValue" for="profileFrameScale">120%</output>
+                <button type="button" class="pf-gear-reset" id="resetFrameScaleBtn" aria-label="Reset frame size">Reset</button>
+              </div>
+            </div>
+            <button type="button" role="menuitemcheckbox" id="profileLayoutToggle" aria-checked="false"><i class="fa-solid fa-up-down" aria-hidden="true"></i> <span>Vertical profile</span></button>
             <div class="pf-gear-group" role="group" aria-labelledby="wrapperOpacityLabel">
               <span id="wrapperOpacityLabel" class="pf-gear-label">Wrapper opacity</span>
               <div class="pf-opacity">
@@ -362,7 +391,7 @@
         <button type="button" id="profileOverlayClose" class="pf-icon-btn" title="Close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
 
-      <div class="profile-head" data-align="left">
+      <div class="profile-head" data-align="left" data-layout="horizontal">
         <button type="button" id="profileAvatarBtn" class="pf-avatar-btn" aria-label="Change profile picture">
           <img id="profilePreview" class="profile-preview" src="" alt="">
           <img id="profileFramePreview" class="pf-frame" alt="" draggable="false" hidden>
@@ -387,6 +416,7 @@
           <button type="button" class="pf-icon-btn pf-library-close" data-close-library="wrappers" aria-label="Close card wrappers"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
         <div id="wrapperGrid" class="pf-library-grid wrapper-grid"></div>
+        <input type="file" id="profileWrapperInput" accept="image/*" hidden>
       </section>
       <div class="pf-save-row">
       <button type="button" id="profileSaveBtn" class="overlay-btn save-btn" hidden><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save changes</button>
@@ -419,7 +449,7 @@
 <div id="updatesOverlay" class="upd-overlay" role="dialog" aria-modal="true" aria-labelledby="updatesTitle" hidden>
   <div class="upd-backdrop" id="updatesBackdrop"></div>
   <div id="updatesPanel" tabindex="-1">
-    <img class="upd-banner" src="https://ws.ankomstudios.com/images/pages/release/wannasmile-updated-banner.png" alt="" />
+    <img class="upd-banner" src="assets/images/pages/release/wannasmile-updated-banner.png" alt="" />
     <h2 class="upd-title" id="updatesTitle">Updates n changes!</h2>
     <img class="upd-sticker" src="https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/stickers/MeltGui-pack/cheer.webp" alt="" />
     <ul class="upd-list">

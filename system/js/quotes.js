@@ -1,5 +1,7 @@
 "use strict";
 
+const WS_QTYPE_ICON_BASE = new URL("../../assets/images/qtypes-btn/", document.currentScript?.src || location.href);
+
 (function injectQuoteStyles() {
   if (document.getElementById("_qs-styles")) return;
   const style = document.createElement("style");
@@ -373,9 +375,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const QTYPES      = ["Qleft", "Qright", "Qrefresh"];
   const QTYPE_ICONS = {
-    Qleft:    "https://ws.ankomstudios.com/images/qtypes-btn/Qleft.png",
-    Qright:   "https://ws.ankomstudios.com/images/qtypes-btn/Qright.png",
-    Qrefresh: "https://ws.ankomstudios.com/images/qtypes-btn/Qrefresh.png",
+    Qleft:    new URL("Qleft.png", WS_QTYPE_ICON_BASE).href,
+    Qright:   new URL("Qright.png", WS_QTYPE_ICON_BASE).href,
+    Qrefresh: new URL("Qrefresh.png", WS_QTYPE_ICON_BASE).href,
   };
   const QTYPE_KEY = "ws_qtype";
 

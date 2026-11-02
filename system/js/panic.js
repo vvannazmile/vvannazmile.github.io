@@ -1,3 +1,5 @@
+const WS_PANIC_ASSET_BASE = new URL("../../assets/images/panic-btn/", document.currentScript?.src || location.href);
+
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("nes-btn");
   if (!btn) return;
@@ -13,8 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateUI() {
     img.src = nesState === "cartage"
-      ? "https://ws.ankomstudios.com/images/panic-btn/allow.png"
-      : "https://ws.ankomstudios.com/images/panic-btn/deny.png";
+      ? new URL("allow.png", WS_PANIC_ASSET_BASE).href
+      : new URL("deny.png", WS_PANIC_ASSET_BASE).href;
   }
 
   updateUI();

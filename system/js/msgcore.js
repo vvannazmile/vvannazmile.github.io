@@ -20,7 +20,7 @@
 //    "seen" marker kept per browser (ws_chat_seen, written by markSeen()).
 //    Opening the conversation (chat page, tab visible and focused) clears it
 //    in every tab; notification cards for that friend go away with it.
-//  • The DM button (#openDm) swaps to https://ws.ankomstudios.com/images/icons/dmed.png while
+//  • The DM button (#openDm) swaps to assets/images/icons/dmed.png while
 //    anything is unread. If that file isn't there it keeps the normal icon and
 //    shows a badge with the count instead.
 //  • Notifications are cards in the corner. Clicking one opens that
@@ -32,8 +32,9 @@
   const API = window.WS_ENDPOINTS && window.WS_ENDPOINTS.data;
   const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || location.href;
   const ROOT = new URL("../../", SCRIPT_SRC).href;
+  const ASSET_ROOT = new URL("assets/", ROOT);
   const CHAT_URL = ROOT + "system/pages/chat/index.html";
-  const UNREAD_ICON = "https://ws.ankomstudios.com/images/icons/dmed.png";   // unread state; dm.png is the normal state
+  const UNREAD_ICON = new URL("images/icons/dmed.png", ASSET_ROOT).href;   // unread state; dm.png is the normal state
   const DEFAULT_PIC = "https://raw.githubusercontent.com/bguhm/bguhm.github.io/main/system/images/profile.png";
   const IS_CHAT_PAGE = /\/pages\/chat\//.test(location.pathname);
 

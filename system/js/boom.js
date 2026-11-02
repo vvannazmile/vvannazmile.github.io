@@ -1,8 +1,10 @@
+const WS_BOOM_AUDIO_ICON_BASE = new URL("../../assets/gifs/audio-btn/", document.currentScript?.src || location.href);
+
 (function () {
   const muted = localStorage.getItem("ws_muted") === "true";
   document.addEventListener("DOMContentLoaded", function () {
     const img = document.getElementById("muteToggleImg");
-    if (img) img.src = muted ? "https://ws.ankomstudios.com/gifs/audio-btn/SHUT.gif" : "https://ws.ankomstudios.com/gifs/audio-btn/BOOM.gif";
+    if (img) img.src = new URL(muted ? "SHUT.gif" : "BOOM.gif", WS_BOOM_AUDIO_ICON_BASE).href;
     if (window.WS_Audio) window.WS_Audio.setMuted(muted);
   });
 })();
@@ -17,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const muted = localStorage.getItem("ws_muted") === "true";
     const next  = !muted;
     localStorage.setItem("ws_muted", next);
-    img.src = next ? "https://ws.ankomstudios.com/gifs/audio-btn/SHUT.gif" : "https://ws.ankomstudios.com/gifs/audio-btn/BOOM.gif";
+    img.src = new URL(next ? "SHUT.gif" : "BOOM.gif", WS_BOOM_AUDIO_ICON_BASE).href;
     if (window.WS_Audio) window.WS_Audio.setMuted(next);
   });
 });

@@ -1,6 +1,7 @@
 
 (function () {
   "use strict";
+  const ASSET_ROOT = new URL("../../assets/", document.currentScript?.src || location.href);
 
   const DATA_KEYS = [
     "ws_favorites",   // ordered favorites list (main.js initFavorites)
@@ -19,7 +20,7 @@
     "theme",
     "profileNickname", "profilePfp",
     // profile.js's real keys (the two above are older names)
-    "nickname", "profilePic", "pfpPixelated", "profileBanner", "pfpAlign", "pfpFrame", "pfpWrapper", "pfpWrapperOpacity", "pfAdvancedEdit", "ws_profile_setup",
+    "nickname", "profilePic", "pfpPixelated", "profileBanner", "pfpAlign", "pfpFrame", "pfpFrameScale", "pfpAvatarSize", "pfpShape", "pfpLayout", "pfpWrapper", "pfpWrapperOpacity", "pfAdvancedEdit", "ws_profile_setup",
     "welcomeNeverShow",
     "ws_updates_seen",   // last "Updates & changes" release dismissed/read (updates.js)
     "searchEngine",
@@ -295,7 +296,7 @@
     "ws_daily_snooze", "ws_daily_picks", "ws_daily_mode", "ws_daily_rerolls",
     // profile.js's real keys (profileNickname/profilePfp above are older
     // names), plus the tutorial flag so a cleared visitor gets the tour again.
-    "nickname", "profilePic", "pfpPixelated", "profileBanner", "pfpAlign", "pfpFrame", "pfpWrapper", "pfpWrapperOpacity", "pfAdvancedEdit", "ws_profile_setup",
+    "nickname", "profilePic", "pfpPixelated", "profileBanner", "pfpAlign", "pfpFrame", "pfpShape", "pfpWrapper", "pfpWrapperOpacity", "pfAdvancedEdit", "ws_profile_setup",
     "ws_tutorial_version",
     // Early access (main.js): which tester assets were already announced,
     // and the list kept for the credits page.
@@ -365,7 +366,7 @@
       if (favLink) favLink.href = favLink.dataset.realHref || "/favicon.ico";
 
       const cloakImg = document.querySelector("#cloak-btn img");
-      if (cloakImg) cloakImg.src = "https://ws.ankomstudios.com/images/cloak-btn/visable.png";
+      if (cloakImg) cloakImg.src = new URL("images/cloak-btn/visable.png", ASSET_ROOT).href;
 
       // (This used to set html[theme]="redux" too. themify.js watches that
       // attribute and fetches the theme's assets the moment it changes, so a

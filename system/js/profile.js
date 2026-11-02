@@ -21,12 +21,25 @@ const PROFILE_IMAGES = [
 // see frames.js. The saved value is the frame's URL (or a data URL for an
 // uploaded one) under "pfpFrame"; an empty value means no frame.
 const FRAME_KEY     = "pfpFrame";
+const FRAME_SCALE_KEY = "pfpFrameScale";
+const AVATAR_SIZE_KEY = "pfpAvatarSize";
+const AVATAR_SHAPE_KEY = "pfpShape";
+const PROFILE_LAYOUT_KEY = "pfpLayout";
+const FRAME_SCALE_DEFAULT = 1.2;
+const FRAME_SCALE_MIN = 1;
+const FRAME_SCALE_MAX = 2;
+const AVATAR_SIZE_DEFAULT = 135;
+const AVATAR_SIZE_MIN = 80;
+const AVATAR_SIZE_MAX = 190;
+const AVATAR_SHAPES = ["circle", "rounded", "square"];
 // Card wrapper: the card's background image (wrappers/<id>/splash.<ext>, from the
-// WrapperWS sheet; see wrappers.js). "pfpWrapper" = URL, "pfpWrapperOpacity" =
-// the visitor's own 0-100 setting from the gear menu (default 100).
+// WrapperWS sheet; see wrappers.js) or an uploaded data URL. "pfpWrapper" =
+// the visitor's selected value, "pfpWrapperOpacity" = their own 0-100 setting
+// from the gear menu (default 100).
 const WRAPPER_KEY         = "pfpWrapper";
 const WRAPPER_OPACITY_KEY = "pfpWrapperOpacity";
 const FRAME_GIF_MAX = 1.5 * 1024 * 1024;   // uploaded frames are stored as-is, so keep them small
+const PROFILE_WRAPPER_MAX = 1.5 * 1024 * 1024;
 const PROFILE_GIF_MAX = 1.5 * 1024 * 1024;
 
 const DEFAULT_PIC = "https://raw.githubusercontent.com/bguhm/bguhm.github.io/main/system/images/profile.png";
@@ -47,17 +60,27 @@ function pixelateImageData(srcUrl, blocks = PIXEL_BLOCKS, outSize = PIXEL_OUTPUT
     if (!srcUrl.startsWith("data:")) img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
+        const sourceWidth = img.naturalWidth || img.width;
+        const sourceHeight = img.naturalHeight || img.height;
+        const sourceMax = Math.max(sourceWidth, sourceHeight);
+        const smallScale = blocks / sourceMax;
+        const outputScale = outSize / sourceMax;
+        const smallWidth = Math.max(1, Math.round(sourceWidth * smallScale));
+        const smallHeight = Math.max(1, Math.round(sourceHeight * smallScale));
+        const outputWidth = Math.max(1, Math.round(sourceWidth * outputScale));
+        const outputHeight = Math.max(1, Math.round(sourceHeight * outputScale));
+
         const small = document.createElement("canvas");
-        small.width = blocks; small.height = blocks;
+        small.width = smallWidth; small.height = smallHeight;
         const sctx = small.getContext("2d");
         sctx.imageSmoothingEnabled = true;
-        sctx.drawImage(img, 0, 0, blocks, blocks);
+        sctx.drawImage(img, 0, 0, smallWidth, smallHeight);
 
         const big = document.createElement("canvas");
-        big.width = outSize; big.height = outSize;
+        big.width = outputWidth; big.height = outputHeight;
         const bctx = big.getContext("2d");
         bctx.imageSmoothingEnabled = false;
-        bctx.drawImage(small, 0, 0, blocks, blocks, 0, 0, outSize, outSize);
+        bctx.drawImage(small, 0, 0, smallWidth, smallHeight, 0, 0, outputWidth, outputHeight);
 
         resolve(big.toDataURL("image/png"));
       } catch (err) {
@@ -90,8 +113,8 @@ function getPixelatedSrc(srcUrl) {
 //           gallery, Remove). Opens from the banner or the gear.
 // Every change (picture, banner, pixelate, position, nickname) is PENDING until Save;
 // "Advanced editing" (gear menu) is a preference, saved at once: while it's
-// on, picking ANY picture or banner in the libraries opens it in the
-// cropper first instead of using it as-is.
+// on, still pictures and banners in the libraries open in the cropper first.
+// Animated profile GIFs bypass the cropper so they remain animated.
 // closing the modal throws pending changes away.
 
 // ── Banner storage ─────────────────────────────────────────────────────
@@ -154,6 +177,12 @@ function currentUsername() {
 // e.g. centred under a banner that "eats" it. Stored as "pfpAlign".
 const PFP_ALIGNS = ["left", "center", "right"];
 const PFP_ALIGN_KEY = "pfpAlign";
+const PROFILE_LAYOUTS = ["horizontal", "vertical"];
+
+function boundedNumber(value, min, max, fallback) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+}
 
 function savedProfile() {
   const username = currentUsername();
@@ -166,12 +195,16 @@ function savedProfile() {
     pixelated: localStorage.getItem("pfpPixelated") === "true",
     align:     PFP_ALIGNS.includes(localStorage.getItem(PFP_ALIGN_KEY)) ? localStorage.getItem(PFP_ALIGN_KEY) : "left",
     frame:     localStorage.getItem(FRAME_KEY) || "",
+    frameScale: boundedNumber(localStorage.getItem(FRAME_SCALE_KEY), FRAME_SCALE_MIN, FRAME_SCALE_MAX, FRAME_SCALE_DEFAULT),
+    avatarSize: boundedNumber(localStorage.getItem(AVATAR_SIZE_KEY), AVATAR_SIZE_MIN, AVATAR_SIZE_MAX, AVATAR_SIZE_DEFAULT),
+    avatarShape: AVATAR_SHAPES.includes(localStorage.getItem(AVATAR_SHAPE_KEY)) ? localStorage.getItem(AVATAR_SHAPE_KEY) : "circle",
+    layout:    PROFILE_LAYOUTS.includes(localStorage.getItem(PROFILE_LAYOUT_KEY)) ? localStorage.getItem(PROFILE_LAYOUT_KEY) : "horizontal",
     wrapper:   localStorage.getItem(WRAPPER_KEY) || "",
     wrapperOpacity: localStorage.getItem(WRAPPER_OPACITY_KEY) || "",
   };
 }
 
-const _pending = { pic: undefined, name: undefined, banner: undefined, pixelated: undefined, align: undefined, frame: undefined, wrapper: undefined, wrapperOpacity: undefined };
+const _pending = { pic: undefined, name: undefined, banner: undefined, pixelated: undefined, align: undefined, frame: undefined, frameScale: undefined, avatarSize: undefined, avatarShape: undefined, layout: undefined, wrapper: undefined, wrapperOpacity: undefined };
 
 function resetPending() {
   Object.keys(_pending).forEach(k => { _pending[k] = undefined; });
@@ -221,7 +254,26 @@ function paintPic(img, src, pixelated, crisp) {
 }
 
 // Shows a frame in an <img> that sits above the picture ("" = none).
-function paintFrame(img, src) { window.WSFrames.paint(img, src); }
+function paintFrame(img, src, scale) { window.WSFrames.paint(img, src, scale); }
+
+function paintAvatarSize(size) {
+  const clamped = boundedNumber(size, AVATAR_SIZE_MIN, AVATAR_SIZE_MAX, AVATAR_SIZE_DEFAULT);
+  document.getElementById("profileOverlayPanel")?.style.setProperty("--pf-avatar", `${clamped}px`);
+}
+
+function paintAvatarShape(shape) {
+  const selected = AVATAR_SHAPES.includes(shape) ? shape : "circle";
+  document.getElementById("profileOverlayPanel")?.setAttribute("data-avatar-shape", selected);
+  const avatarButton = document.getElementById("profileAvatarBtn");
+  if (avatarButton) avatarButton.dataset.avatarShape = selected;
+  const preview = document.getElementById("profilePreview");
+  if (preview) preview.dataset.avatarShape = selected;
+  const headerAvatar = document.getElementById("pfp");
+  if (headerAvatar) headerAvatar.dataset.avatarShape = selected;
+  document.getElementById("profileAvatarShapeChoices")?.querySelectorAll("[data-avatar-shape]").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.avatarShape === selected));
+  });
+}
 
 // The header avatar is a bare <img>; give it a wrapper + a frame layer once.
 function headerFrameEl() {
@@ -246,10 +298,15 @@ function renderProfileCard() {
   const nick     = currentValue("name");
   const pic      = currentValue("pic");
   const pixel    = currentValue("pixelated");
+  const frameScale = currentValue("frameScale");
+  const avatarSize = currentValue("avatarSize");
+  const avatarShape = currentValue("avatarShape");
 
   paintBanner(currentValue("banner"));
   paintPic(document.getElementById("profilePreview"), pic, pixel, true);
-  paintFrame(document.getElementById("profileFramePreview"), currentValue("frame"));
+  paintFrame(document.getElementById("profileFramePreview"), currentValue("frame"), frameScale);
+  paintAvatarSize(avatarSize);
+  paintAvatarShape(avatarShape);
   window.WSWrappers.paint(document.getElementById("profileWrapper"), currentValue("wrapper"), currentValue("wrapperOpacity"));
   paintWrapperControls();
 
@@ -259,10 +316,27 @@ function renderProfileCard() {
   if (handleEl) handleEl.textContent = username ? `@${username}` : "";
 
   const align = currentValue("align");
+  const layout = currentValue("layout");
   const head = document.querySelector("#profileOverlayPanel .profile-head");
-  if (head) head.dataset.align = align;
+  if (head) {
+    head.dataset.align = align;
+    head.dataset.layout = layout;
+  }
   document.querySelectorAll("#profileGearMenu [data-align]").forEach(b =>
     b.setAttribute("aria-checked", String(b.dataset.align === align)));
+  const layoutBtn = document.getElementById("profileLayoutToggle");
+  if (layoutBtn) {
+    layoutBtn.setAttribute("aria-checked", String(layout === "vertical"));
+    layoutBtn.querySelector("span").textContent = layout === "vertical" ? "Horizontal profile" : "Vertical profile";
+  }
+  const frameScaleInput = document.getElementById("profileFrameScale");
+  const frameScaleValue = document.getElementById("profileFrameScaleValue");
+  if (frameScaleInput) frameScaleInput.value = String(Math.round(frameScale * 100));
+  if (frameScaleValue) frameScaleValue.value = `${Math.round(frameScale * 100)}%`;
+  const avatarSizeInput = document.getElementById("profileAvatarSize");
+  const avatarSizeValue = document.getElementById("profileAvatarSizeValue");
+  if (avatarSizeInput) avatarSizeInput.value = String(avatarSize);
+  if (avatarSizeValue) avatarSizeValue.value = `${Math.round(avatarSize)} px`;
 
   const pixelBtn = document.getElementById("pixelToggleBtn");
   if (pixelBtn) {
@@ -282,7 +356,7 @@ function renderProfileCard() {
   if (removeBanner) removeBanner.disabled = !currentValue("banner");
 
   markPicked("#pfpGrid", pic);
-  markPicked("#frameGrid", currentValue("frame"));
+  syncFrameCarouselSelection(currentValue("frame"));
   markPicked("#wrapperGrid", currentValue("wrapper"));
   markPicked("#bannerGrid", currentValue("banner"));
 
@@ -304,17 +378,28 @@ function loadProfile() {
 
   const pfpEl = document.getElementById("pfp");
   if (pfpEl) paintPic(pfpEl, saved.pic, saved.pixelated, false);
-  paintFrame(headerFrameEl(), saved.frame);
+  paintFrame(headerFrameEl(), saved.frame, saved.frameScale);
 
   renderProfileCard();
 }
 
-function saveProfile({ pic, name, pixelated, banner, align, frame, wrapper, wrapperOpacity } = {}) {
+function saveProfile({ pic, name, pixelated, banner, align, frame, frameScale, avatarSize, avatarShape, layout, wrapper, wrapperOpacity } = {}) {
   let picSaved = true;
-  try {
-    if (wrapper !== undefined) { if (wrapper) localStorage.setItem(WRAPPER_KEY, wrapper); else localStorage.removeItem(WRAPPER_KEY); }
-    if (wrapperOpacity !== undefined) { if (wrapperOpacity !== "" && wrapperOpacity !== "100") localStorage.setItem(WRAPPER_OPACITY_KEY, wrapperOpacity); else localStorage.removeItem(WRAPPER_OPACITY_KEY); }
-  } catch (_) {}
+  let wrapperSaved = true;
+  let profileSettingsSaved = true;
+  if (wrapper !== undefined) {
+    try { if (wrapper) localStorage.setItem(WRAPPER_KEY, wrapper); else localStorage.removeItem(WRAPPER_KEY); }
+    catch (_) {
+      wrapperSaved = false;
+      if (typeof showToast === "function") showToast("❌ That wrapper couldn't be saved. Try a smaller image or free up browser storage.");
+    }
+  }
+  if (wrapperOpacity !== undefined) {
+    try { if (wrapperOpacity !== "" && wrapperOpacity !== "100") localStorage.setItem(WRAPPER_OPACITY_KEY, wrapperOpacity); else localStorage.removeItem(WRAPPER_OPACITY_KEY); }
+    catch (_) {
+      if (typeof showToast === "function") showToast("❌ Wrapper opacity couldn't be saved. Try again after freeing browser storage.");
+    }
+  }
   if (frame !== undefined) {
     try {
       if (frame) localStorage.setItem(FRAME_KEY, frame);
@@ -339,10 +424,24 @@ function saveProfile({ pic, name, pixelated, banner, align, frame, wrapper, wrap
       if (typeof showToast === "function") showToast("❌ That picture couldn't be saved. Try a smaller image or free up browser storage.");
     }
   }
+  const profileSettings = [
+    [frameScale, FRAME_SCALE_KEY, value => String(boundedNumber(value, FRAME_SCALE_MIN, FRAME_SCALE_MAX, FRAME_SCALE_DEFAULT)), "frame size"],
+    [avatarSize, AVATAR_SIZE_KEY, value => String(Math.round(boundedNumber(value, AVATAR_SIZE_MIN, AVATAR_SIZE_MAX, AVATAR_SIZE_DEFAULT))), "picture size"],
+    [avatarShape, AVATAR_SHAPE_KEY, value => AVATAR_SHAPES.includes(value) ? value : "circle", "picture shape"],
+    [layout, PROFILE_LAYOUT_KEY, value => PROFILE_LAYOUTS.includes(value) ? value : "horizontal", "profile layout"],
+  ];
+  profileSettings.forEach(([value, key, normalize, label]) => {
+    if (value === undefined) return;
+    try { localStorage.setItem(key, normalize(value)); }
+    catch (_) {
+      profileSettingsSaved = false;
+      if (typeof showToast === "function") showToast(`❌ Your ${label} couldn't be saved. Try again after freeing browser storage.`);
+    }
+  });
   if (name     !== undefined) localStorage.setItem("nickname",      name);
   if (pixelated !== undefined) localStorage.setItem("pfpPixelated", pixelated ? "true" : "false");
   loadProfile();
-  return picSaved;
+  return picSaved && wrapperSaved && profileSettingsSaved;
 }
 
 // ── Advanced editing ───────────────────────────────────────────────────
@@ -360,9 +459,15 @@ function paintAdvancedEdit() {
 let startPicCrop    = null;   // (src) -> opens the 1:1 cropper in the picture library
 let startBannerCrop = null;   // (src) -> opens the 4:1 cropper in the banner library
 
-// A tile was picked: use it, or crop it first when advanced editing is on.
+// A tile was picked: animated profile GIFs remain untouched; other pictures
+// open in the cropper when advanced editing is on.
 function pickPic(src) {
-  if (advancedEditing() && startPicCrop) startPicCrop(src);
+  if (isGifImage(src)) {
+    setPending("pic", src);
+    if (advancedEditing() && typeof showToast === "function") {
+      showToast("GIF profile pictures stay animated, so cropping is skipped.");
+    }
+  } else if (advancedEditing() && startPicCrop) startPicCrop(src);
   else setPending("pic", src);
 }
 function pickBanner(value) {
@@ -437,44 +542,166 @@ function renderPfpGrid() {
   markPicked("#pfpGrid", currentValue("pic"));
 }
 
-// Frames side modal: Upload, "None", their own upload, then
-// every FramesWS frame. Each tile previews the frame over a sample circle.
-function frameTile(f, index) {
-  const tile = makeTile({
-    value: f.url, img: f.url, label: f.name, index,
-    tag: f.animated ? "ANIM" : "",
-    pixelated: f.pixelated,
-    onPick: () => setPending("frame", f.url),
+let frameCarouselItems = [];
+let frameCarouselScrollTimer = 0;
+let frameProgrammaticTarget = null;
+let frameScrollAnimation = 0;
+let frameScrollAnimationTimer = 0;
+let frameDragActive = false;
+let frameDragStartX = 0;
+let frameDragStartScroll = 0;
+let frameDragMoved = false;
+let frameSuppressClickUntil = 0;
+
+function frameSlideAtCenter() {
+  const viewport = document.getElementById("frameViewport");
+  const grid = document.getElementById("frameGrid");
+  if (!viewport || !grid) return null;
+  const center = viewport.scrollLeft + viewport.clientWidth / 2;
+  let closest = null;
+  let distance = Infinity;
+  grid.querySelectorAll(".pf-frame-slide").forEach(tile => {
+    const tileCenter = tile.offsetLeft + tile.offsetWidth / 2;
+    const delta = Math.abs(tileCenter - center);
+    if (delta < distance) { distance = delta; closest = tile; }
   });
-  tile.querySelector("img")?.addEventListener("error", () => tile.classList.add("is-missing"), { once: true });
-  return tile;
+  return closest;
+}
+
+function centerFrameSlide(tile, behavior) {
+  const viewport = document.getElementById("frameViewport");
+  if (!viewport || !tile) return;
+  const left = tile.offsetLeft + tile.offsetWidth / 2 - viewport.clientWidth / 2;
+  const animation = ++frameScrollAnimation;
+  clearTimeout(frameScrollAnimationTimer);
+  if (behavior !== "smooth" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    viewport.scrollLeft = left;
+    return;
+  }
+  const start = viewport.scrollLeft;
+  const distance = left - start;
+  const startedAt = performance.now();
+  const step = () => {
+    if (animation !== frameScrollAnimation) return;
+    const progress = Math.min(1, (performance.now() - startedAt) / 280);
+    viewport.scrollLeft = start + distance * (1 - (1 - progress) ** 3);
+    if (progress < 1) frameScrollAnimationTimer = setTimeout(step, 16);
+  };
+  frameScrollAnimationTimer = setTimeout(step, 16);
+}
+
+function syncFrameCarouselSelection(value) {
+  const grid = document.getElementById("frameGrid");
+  if (!grid) return;
+  const centered = frameSlideAtCenter();
+  grid.querySelectorAll(".pf-frame-slide").forEach(tile => {
+    const selected = tile === centered && tile.dataset.value === value;
+    tile.classList.toggle("is-picked", selected);
+    tile.setAttribute("aria-selected", String(selected));
+  });
+}
+
+function finishFrameCarouselScroll() {
+  const viewport = document.getElementById("frameViewport");
+  const tile = frameProgrammaticTarget === null
+    ? frameSlideAtCenter()
+    : document.querySelector(`#frameGrid [data-frame-index="${frameProgrammaticTarget}"]`);
+  if (!tile || !viewport || !frameCarouselItems.length) return;
+  const length = frameCarouselItems.length;
+  const physicalIndex = Number(tile.dataset.frameIndex);
+  const itemIndex = physicalIndex % length;
+  const cycle = Math.floor(physicalIndex / length);
+  if (cycle !== 1) {
+    const matching = document.querySelector(`#frameGrid [data-frame-index="${length + itemIndex}"]`);
+    frameProgrammaticTarget = null;
+    centerFrameSlide(matching, "auto");
+  } else {
+    const delta = tile.offsetLeft + tile.offsetWidth / 2 - (viewport.scrollLeft + viewport.clientWidth / 2);
+    if (Math.abs(delta) > 1) {
+      frameProgrammaticTarget = physicalIndex;
+      centerFrameSlide(tile, "smooth");
+      clearTimeout(frameCarouselScrollTimer);
+      frameCarouselScrollTimer = setTimeout(finishFrameCarouselScroll, 700);
+      return;
+    }
+    frameProgrammaticTarget = null;
+  }
+  const value = frameCarouselItems[itemIndex].value;
+  syncFrameCarouselSelection(value);
+  if (currentValue("frame") !== value) setPending("frame", value);
+}
+
+function goToFrameSlide(physicalIndex) {
+  if (performance.now() < frameSuppressClickUntil) return;
+  const tile = document.querySelector(`#frameGrid [data-frame-index="${physicalIndex}"]`);
+  if (!tile) return;
+  frameProgrammaticTarget = physicalIndex;
+  clearTimeout(frameCarouselScrollTimer);
+  centerFrameSlide(tile, "smooth");
+  frameCarouselScrollTimer = setTimeout(finishFrameCarouselScroll, 700);
 }
 
 function renderFrameGrid(list, message) {
   const grid = document.getElementById("frameGrid");
-  if (!grid) return;
+  const viewport = document.getElementById("frameViewport");
+  const messageEl = document.getElementById("frameMessage");
+  if (!grid || !viewport) return;
   list = list || window.WSFrames.cached();
   const saved = savedProfile().frame;
-  const tiles = [makeTile({
-    upload: true, label: "Upload", index: 0,
-    onPick: () => document.getElementById("profileFrameInput")?.click(),
-  })];
-  const none = makeTile({ value: "", img: "", label: "None", index: tiles.length, onPick: () => setPending("frame", "") });
-  none.querySelector("img")?.remove();
-  none.classList.add("is-none");
-  none.insertAdjacentHTML("afterbegin", `<span class="pf-tile-upload"><i class="fa-solid fa-ban" aria-hidden="true"></i></span>`);
-  tiles.push(none);
-  const own = [saved, _pending.frame].filter((f, i, a) => f && f.startsWith("data:") && a.indexOf(f) === i);
-  own.forEach(src => tiles.push(makeTile({ value: src, img: src, label: "Yours", index: tiles.length, onPick: () => setPending("frame", src) })));
-  list.forEach(f => tiles.push(frameTile(f, tiles.length)));
-  if (message) {
-    const p = document.createElement("p");
-    p.className = "pf-library-msg";
-    p.textContent = message;
-    tiles.push(p);
+  frameCarouselItems = [{ value: "", img: "", label: "None", pixelated: false, animated: false }];
+  const own = [saved, _pending.frame]
+    .filter((src, i, all) => src && src.startsWith("data:") && all.indexOf(src) === i);
+  own.forEach(src => frameCarouselItems.push({
+    value: src, img: src, label: "Yours",
+    animated: isGifImage(src), pixelated: false,
+  }));
+  list.forEach(frame => {
+    if (!frameCarouselItems.some(item => item.value === frame.url)) {
+      frameCarouselItems.push({
+        value: frame.url, img: frame.url, label: frame.name,
+        tag: frame.animated ? "ANIM" : "", pixelated: frame.pixelated,
+      });
+    }
+  });
+  if (saved && !frameCarouselItems.some(item => item.value === saved)) {
+    frameCarouselItems.push({ value: saved, img: saved, label: "Selected frame", pixelated: false });
+  }
+  const selectedIndex = Math.max(0, frameCarouselItems.findIndex(item => item.value === currentValue("frame")));
+  const tiles = [];
+  for (let cycle = 0; cycle < 3; cycle++) {
+    frameCarouselItems.forEach((item, index) => {
+      const physicalIndex = cycle * frameCarouselItems.length + index;
+      const tile = makeTile({
+        value: item.value,
+        img: item.img,
+        label: item.label,
+        tag: item.tag || (item.animated ? "GIF" : ""),
+        pixelated: item.pixelated,
+        index: physicalIndex,
+        onPick: () => goToFrameSlide(physicalIndex),
+      });
+      tile.classList.add("pf-frame-slide");
+      tile.dataset.frameIndex = String(physicalIndex);
+      tile.setAttribute("role", "option");
+      tile.setAttribute("aria-selected", "false");
+      if (!item.value) {
+        tile.querySelector("img")?.remove();
+        tile.classList.add("is-none");
+        tile.insertAdjacentHTML("afterbegin", `<span class="pf-tile-upload"><i class="fa-solid fa-ban" aria-hidden="true"></i></span>`);
+      } else {
+        tile.querySelector("img")?.addEventListener("error", () => tile.classList.add("is-missing"), { once: true });
+      }
+      tiles.push(tile);
+    });
   }
   grid.replaceChildren(...tiles);
-  markPicked("#frameGrid", currentValue("frame"));
+  if (messageEl) {
+    messageEl.textContent = message || "";
+    messageEl.hidden = !message;
+  }
+  const initial = grid.querySelector(`[data-frame-index="${frameCarouselItems.length + selectedIndex}"]`);
+  centerFrameSlide(initial, "auto");
+  syncFrameCarouselSelection(currentValue("frame"));
 }
 
 // Shows the cached list at once, then swaps in the live one.
@@ -482,7 +709,7 @@ function loadFrameGrid() {
   const cached = window.WSFrames.cached();
   renderFrameGrid(cached, cached.length ? "" : "Loading frames…");
   window.WSFrames.load()
-    .then(list => { renderFrameGrid(list, list.length ? "" : "No frames yet. Check back soon!"); renderProfileCard(); })
+    .then(list => { renderFrameGrid(list, list.length ? "" : "No frames yet. Upload one to get started."); renderProfileCard(); })
     .catch(() => { if (!window.WSFrames.cached().length) renderFrameGrid([], "Couldn't load frames right now. Try again in a bit."); });
 }
 
@@ -506,7 +733,17 @@ function renderWrapperGrid(list, message) {
   none.querySelector("img")?.remove();
   none.classList.add("is-none");
   none.insertAdjacentHTML("afterbegin", `<span class="pf-tile-upload"><i class="fa-solid fa-ban" aria-hidden="true"></i></span>`);
-  const tiles = [none];
+  const tiles = [makeTile({
+    upload: true, label: "Upload", index: 0,
+    onPick: () => document.getElementById("profileWrapperInput")?.click(),
+  }), none];
+  const own = [savedProfile().wrapper, _pending.wrapper]
+    .filter((src, i, all) => src && src.startsWith("data:") && all.indexOf(src) === i);
+  own.forEach(src => tiles.push(makeTile({
+    value: src, img: src, label: "Yours", index: tiles.length,
+    tag: isGifImage(src) ? "GIF" : "",
+    onPick: () => setPending("wrapper", src),
+  })));
   list.forEach(w => tiles.push(wrapperTile(w, tiles.length)));
   if (message) {
     const p = document.createElement("p");
@@ -631,7 +868,8 @@ function openLibrary(which) {
   } else {
     renderPfpGrid();
   }
-  lib.querySelector(".pf-tile")?.focus({ preventScroll: true });
+  const focusTarget = which === "frames" ? document.getElementById("frameViewport") : lib.querySelector(".pf-tile");
+  focusTarget?.focus({ preventScroll: true });
 }
 
 function closeLibrary(which) {
@@ -737,6 +975,10 @@ window.openProfileOverlay  = openProfileOverlay;
 window.closeProfileOverlay = closeProfileOverlay;
 
 window.addEventListener("DOMContentLoaded", () => {
+  try {
+    localStorage.removeItem("profileBio");
+    localStorage.removeItem("ws_ticket_role");
+  } catch (_) {}
   loadProfile();
   document.addEventListener("ws:ticket-change", loadProfile);
   const $id = (id) => document.getElementById(id);
@@ -775,6 +1017,11 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (!overlay.contains(e.target)) return;
+    if (e.target.closest?.("#frameViewport") && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      e.preventDefault();
+      const tile = frameSlideAtCenter();
+      if (tile) goToFrameSlide(Number(tile.dataset.frameIndex) + (e.key === "ArrowRight" ? 1 : -1));
+    }
     // Handled here because the line below stops the event before it
     // reaches the input's own listeners.
     if (e.key === "Enter" && e.target.id === "usernameInput") {
@@ -806,6 +1053,7 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
     if (item.dataset.align) setPending("align", item.dataset.align);
+    if (item.dataset.avatarShape) setPending("avatarShape", item.dataset.avatarShape);
   });
 
   // Libraries open from the avatar / the banner too.
@@ -832,6 +1080,84 @@ window.addEventListener("DOMContentLoaded", () => {
   $id("removeFrameBtn")?.addEventListener("click", () => setPending("frame", ""));
   $id("removeWrapperBtn")?.addEventListener("click", () => setPending("wrapper", ""));
   $id("wrapperOpacity")?.addEventListener("input", (e) => setPending("wrapperOpacity", String(e.target.value)));
+  $id("profileFrameScale")?.addEventListener("input", (e) => setPending("frameScale", Number(e.target.value) / 100));
+  $id("profileAvatarSize")?.addEventListener("input", (e) => setPending("avatarSize", Number(e.target.value)));
+  $id("resetFrameScaleBtn")?.addEventListener("click", () => setPending("frameScale", FRAME_SCALE_DEFAULT));
+  $id("resetAvatarSizeBtn")?.addEventListener("click", () => setPending("avatarSize", AVATAR_SIZE_DEFAULT));
+  $id("profileLayoutToggle")?.addEventListener("click", () =>
+    setPending("layout", currentValue("layout") === "vertical" ? "horizontal" : "vertical"));
+  const frameViewport = $id("frameViewport");
+  frameViewport?.addEventListener("scroll", () => {
+    if (frameProgrammaticTarget !== null) return;
+    clearTimeout(frameCarouselScrollTimer);
+    frameCarouselScrollTimer = setTimeout(finishFrameCarouselScroll, 180);
+  }, { passive: true });
+  window.addEventListener("resize", () => {
+    const library = $id("framesLibrary");
+    if (!frameViewport || !library || library.hidden || !frameCarouselItems.length) return;
+    frameProgrammaticTarget = null;
+    clearTimeout(frameCarouselScrollTimer);
+    const selectedIndex = Math.max(0, frameCarouselItems.findIndex(item => item.value === currentValue("frame")));
+    const selected = $id("frameGrid")?.querySelector(`[data-frame-index="${frameCarouselItems.length + selectedIndex}"]`);
+    centerFrameSlide(selected, "auto");
+    syncFrameCarouselSelection(currentValue("frame"));
+  });
+  frameViewport?.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || !e.isPrimary) return;
+    frameScrollAnimation++;
+    clearTimeout(frameScrollAnimationTimer);
+    frameProgrammaticTarget = null;
+    clearTimeout(frameCarouselScrollTimer);
+    frameDragActive = true;
+    frameDragStartX = e.clientX;
+    frameDragStartScroll = frameViewport.scrollLeft;
+    frameDragMoved = false;
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!frameDragActive || !e.isPrimary || !e.buttons) return;
+    const delta = e.clientX - frameDragStartX;
+    if (Math.abs(delta) > 5) {
+      frameDragMoved = true;
+      frameViewport.classList.add("is-dragging");
+    }
+    if (frameDragMoved) frameViewport.scrollLeft = frameDragStartScroll - delta;
+  });
+  const endFrameDrag = () => {
+    frameDragActive = false;
+    if (!frameDragMoved) return;
+    frameSuppressClickUntil = performance.now() + 250;
+    frameViewport?.classList.remove("is-dragging");
+    frameDragMoved = false;
+  };
+  document.addEventListener("pointerup", endFrameDrag);
+  document.addEventListener("pointercancel", endFrameDrag);
+  $id("uploadFrameBtn")?.addEventListener("click", () => $id("profileFrameInput")?.click());
+
+  $id("profileWrapperInput")?.addEventListener("change", (e) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      if (typeof showToast === "function") showToast("❌ That file isn't an image.");
+      return;
+    }
+    if (file.size > PROFILE_WRAPPER_MAX) {
+      if (typeof showToast === "function") showToast("❌ That wrapper is over 1.5 MB. Try a smaller image.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => { if (typeof showToast === "function") showToast("❌ That file couldn't be read."); };
+    reader.onload = () => {
+      if (typeof reader.result !== "string" || !reader.result.startsWith("data:image/")) {
+        if (typeof showToast === "function") showToast("❌ That file couldn't be read as an image.");
+        return;
+      }
+      setPending("wrapper", reader.result);
+      renderWrapperGrid();
+    };
+    reader.readAsDataURL(file);
+  });
 
   // Frame upload: kept as-is (no crop) so transparency and GIFs survive.
   $id("profileFrameInput")?.addEventListener("change", (e) => {
@@ -849,7 +1175,14 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     const reader = new FileReader();
     reader.onerror = () => { if (typeof showToast === "function") showToast("❌ That file couldn't be read."); };
-    reader.onload = () => { setPending("frame", reader.result); renderFrameGrid(); };
+    reader.onload = () => {
+      if (typeof reader.result !== "string" || !reader.result.startsWith("data:image/")) {
+        if (typeof showToast === "function") showToast("❌ That file couldn't be read as an image.");
+        return;
+      }
+      setPending("frame", reader.result);
+      renderFrameGrid();
+    };
     reader.readAsDataURL(file);
   });
   $id("removeBannerBtn")?.addEventListener("click", () => setPending("banner", ""));
@@ -966,15 +1299,18 @@ window.addEventListener("DOMContentLoaded", () => {
     if (pfpGrid) pfpGrid.hidden = on;
   };
 
-  // Opens the 1:1 cropper on any picture. Cropping a GIF intentionally
-  // produces a still; uploaded GIFs otherwise stay animated.
+  // Opens the 1:1 cropper on still pictures. Animated GIFs bypass it.
   startPicCrop = (src) => {
+    if (isGifImage(src)) {
+      setPending("pic", src);
+      if (advancedEditing() && typeof showToast === "function") {
+        showToast("GIF profile pictures stay animated, so cropping is skipped.");
+      }
+      return;
+    }
     if (!cropPreviewImg) { setPending("pic", src); return; }
     loadCropper().then((ok) => {
       if (!ok) { setPending("pic", src); return; }
-      if (isGifImage(src) && typeof showToast === "function") {
-        showToast("Cropping a GIF turns it into a still image. Cancel to keep it animated.");
-      }
       libraryEl("pfp").hidden = false;
       showCrop(true);
       if (cropper) cropper.destroy();
@@ -1006,11 +1342,7 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       if (isGif) {
-        if (advancedEditing()) startPicCrop(src);
-        else {
-          setPending("pic", src);
-          if (typeof showToast === "function") showToast("GIF profile pictures stay animated. Turn on Advanced editing if you'd like to crop one.");
-        }
+        pickPic(src);
         return;
       }
       startPicCrop(src);
@@ -1060,6 +1392,10 @@ window.addEventListener("DOMContentLoaded", () => {
       banner:    _pending.banner,
       align:     _pending.align,
       frame:     _pending.frame,
+      frameScale: _pending.frameScale,
+      avatarSize: _pending.avatarSize,
+      avatarShape: _pending.avatarShape,
+      layout:    _pending.layout,
       wrapper:   _pending.wrapper,
       wrapperOpacity: _pending.wrapperOpacity,
     });
