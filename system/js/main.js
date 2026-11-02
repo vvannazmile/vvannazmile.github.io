@@ -3224,7 +3224,7 @@ window.addEventListener("load", () => {
     const flags = Array.isArray(item.flags) ? item.flags.filter(Boolean) : [];
     const value = (v) => (v == null ? "" : v);
     const image = value(item.image).trim();
-    const unavailableIcon = /^https?:\/\/(?:ws\.ankomstudios\.com\/icons2\/|ankomstudios\.github\.io\.?\/library\/)/i.test(image);
+    const unavailableIcon = /^https?:\/\/(?:ws\.ankomstudios\.com\/icons2\/|ankomstudios\.github\.io\.?\/library\/|raw\.githubusercontent\.com\/mcmattyobriore\/crazycars\/gh-pages\/crazy-cars\.png(?:[?#]|$))/i.test(image);
     return {
       title: value(item.title),
       author: value(item.author),
