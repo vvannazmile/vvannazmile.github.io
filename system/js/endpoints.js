@@ -3,8 +3,8 @@
 // ── Backend endpoints ──────────────────────────────────────────────────
 // The three Apps Script projects (.documentation/api/) and what each serves:
 //
-//   data  data.gs  assets, devbuild, quotes, sync, tickets
-//                  (main.js, quotes.js, ticket.js, devbuild.js, index.html prefetch)
+//   data  data.gs  default assets, quotes, sync, tickets
+//                  (main.js, quotes.js, ticket.js, index.html prefetch)
 //   cust  cust.gs  themes, widgets, banners, gif packs, frames, wrappers
 //                  (themify.js, widgets.js, profile.js, frames.js, wrappers.js,
 //                  store page)
@@ -19,6 +19,8 @@ window.WS_ENDPOINTS = Object.freeze({
   data: "https://script.google.com/macros/s/AKfycbwTLT4Hv7ThVJ2C4UlUyw7IJ7joif706yTLAkHMV5kFFHs2DBLTC9iw34YAL-BIbmwQ/exec",
   cust: "https://script.google.com/macros/s/AKfycbztiWN2Xfkot_i5keu7o3Sm5z9sbXyTvDwIz9Yd23d-pg_Gl6ckIJrI71RV_K6jPIaM/exec",
   mod:  "https://script.google.com/macros/s/AKfycbyorR1RSI3-aYv91IIobUxMmNv8HKMyYvNKhwgR27AXetGROjkE_eYgBNyW5hwyPh_w/exec",
+  // Public SQL (D1) library used as the DevBuild asset source.
+  library: "https://ankom-api.ankomstudios.workers.dev/library/items/",
   // Your Cloudflare Worker HTML-fetch endpoint used by "qwerty" assets.
   // This fetches the initial HTML document only; it is not a WebSocket relay.
   fetch: "https://ankom-url-api.ankomstudios.workers.dev/fetch?url=",

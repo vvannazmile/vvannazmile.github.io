@@ -167,15 +167,17 @@ window.addEventListener("load", () => {
       // mydex.html's <head> sets WS_SHEET_URL and starts the asset fetch
       // early; this literal is only the fallback for pages that don't.
       sheetUrl:         window.WS_SHEET_URL || window.WS_ENDPOINTS.data,
-      devBuildUrl:      "",
+      devBuildUrl:      window.WS_ENDPOINTS.library || "",
     };
 
     // Sticker list + base path: stickers.js.
 
-    if (!window._activeFetchUrl) {
-      window._activeFetchUrl = (containerMode === "dev" || window._devBuildArmedAtLoad)
-        ? window.config.devBuildUrl
-        : window.config.sheetUrl;
+    const devBuildActive = containerMode === "dev" || window._devBuildArmedAtLoad === true;
+    if (devBuildActive) {
+      if (!window.config.devBuildUrl) throw new Error("DevBuild SQL library endpoint is not configured.");
+      window._activeFetchUrl = window.config.devBuildUrl;
+    } else if (!window._activeFetchUrl) {
+      window._activeFetchUrl = window.config.sheetUrl;
     }
   }
 
@@ -571,13 +573,13 @@ window.addEventListener("load", () => {
   const _FIELD_ALIASES = {
     category:    ["category", "categories", "cat"],
     subcategory: ["sub-category", "subcategory", "sub category", "subcat"],
-    // AssetBuilderWS column M: whole credits the ⬇ button costs (blank/0 = free)
+    // Whole credits the ⬇ button costs (blank/0 = free).
     creditPrice: ["credit-price"],
   };
   const _normKey = (k) => String(k).toLowerCase().replace(/[\s_-]/g, "");
 
-  // Works out which real sheet headers map to each logical field once per
-  // fetch, so per-row lookups become plain property reads.
+  // Works out which source headers map to each logical field once per fetch,
+  // so per-row lookups become plain property reads.
   function _resolveColumns(rows) {
     const keys = [], seen = new Set();
     for (const r of rows) {
@@ -3216,6 +3218,50 @@ window.addEventListener("load", () => {
     }).catch(() => {});
   }
 
+  // DevBuild assets come from the public D1 library. Convert its rows to the
+  // same shape as the DATA feed so the existing asset pipeline stays shared.
+  const SQL_PAGE_LIMIT = 200;
+  const SQL_MAX_PAGES = 50;
+  const _isSqlFeed = (url) => !!url && url === window.WS_ENDPOINTS?.library;
+
+  function _sqlItemToRow(item) {
+    const flags = Array.isArray(item.flags) ? item.flags.filter(Boolean) : [];
+    const value = (v) => (v == null ? "" : v);
+    return {
+      title: value(item.title),
+      author: value(item.author),
+      link: value(item.link),
+      image: value(item.image),
+      category: value(item.category),
+      "sub-category": value(item.sub_category),
+      status: value(item.status),
+      page: item.page,
+      type: flags.join("|"),
+      animated: value(item.animated_url),
+      description: value(item.description),
+      "credit-price": item.credit_price,
+      rating_avg: item.rating_avg,
+      rating_count: item.rating_count,
+    };
+  }
+
+  async function fetchSqlAssets(feedUrl) {
+    const rows = [];
+    for (let page = 1; page <= SQL_MAX_PAGES; page++) {
+      const body = await fetchJSONRetry(() => {
+        const url = new URL(feedUrl, location.href);
+        url.searchParams.set("limit", String(SQL_PAGE_LIMIT));
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("_", String(Date.now()));
+        return url.href;
+      });
+      if (!Array.isArray(body?.items)) throw new Error("SQL library feed returned no items array");
+      rows.push(...body.items.map(_sqlItemToRow));
+      if (body.items.length < SQL_PAGE_LIMIT) break;
+    }
+    return rows;
+  }
+
   // Every load fetches live, unless the user turned on the data cache
   // (Settings → Page behaviour, datacache.js): then the saved copy is used
   // and DATA isn't contacted until R refetches. With the cache off there's
@@ -3267,7 +3313,11 @@ window.addEventListener("load", () => {
         } catch (_) { raw = undefined; }
         if (isRefusal(raw)) raw = undefined;
       }
-      if (raw === undefined) raw = await fetchJSONRetry(() => bustCache(fetchUrl));
+      if (raw === undefined) {
+        raw = _isSqlFeed(fetchUrl)
+          ? await fetchSqlAssets(fetchUrl)
+          : await fetchJSONRetry(() => bustCache(fetchUrl));
+      }
 
       // A stored ticket the server no longer accepts (revoked or removed in
       // TicketApprovalWS): reopen the gate and try again once approved,

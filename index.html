@@ -33,11 +33,16 @@
 (function () {
   window.WS_SHEET_URL = window.WS_ENDPOINTS.data;   // endpoints.js
   try {
+    window._devBuildArmedAtLoad = localStorage.getItem("ws_devBuildArmed") === "true";
     // Only for a browser whose access ticket is already approved (see
     // ticket.js); everyone else waits at the ticket gate, and the backend
     // would refuse the request anyway.
     var ticket = localStorage.getItem("ws_ticket_id");
     if (!ticket || localStorage.getItem("ws_ticket_status") !== "approved") { window.__wsAssetsPrefetch = null; return; }
+    // DevBuild assets come from SQL. Skip only the legacy all-assets request
+    // (which reads AssetBuilderWS); typed Data Apps Script requests for quotes,
+    // tickets and other services remain available.
+    if (localStorage.getItem("ws_devBuildArmed") === "true") { window.__wsAssetsPrefetch = null; return; }
     // Data cache on with a saved copy (datacache.js): no request at all.
     if (localStorage.getItem("ws_data_cache_on") === "1" && localStorage.getItem("ws_cache_assets")) { window.__wsAssetsPrefetch = null; return; }
     var url = window.WS_SHEET_URL;
