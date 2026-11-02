@@ -291,11 +291,9 @@ window.addEventListener("load", () => {
   window._loaderSequenceRunning = false;
 
   // ── Build / loader state ───────────────────────────────────────────────
-  // One "build" is one createAssetCards() call. A page only counts as built
-  // when every card on it has genuinely settled its icon (the "ready" class),
-  // and the loaded state (the "loaded" gif that ends the boot loader) starts
-  // only once EVERY page of the build is built (_allPagesBuilt), never on the
-  // strength of the first page alone.
+  // One "build" is one createAssetCards() call. A page counts as built when
+  // every card on it has settled its icon. The boot loader ends when the
+  // restored page is ready; _allPagesBuilt tracks background completion.
   window._allPagesBuilt = false;
   let _buildId = 0;            // bumped per build / reload; late callbacks from an older build are dropped
   let _loaderSeq = 0;          // bumped whenever a loader sequence starts or is cancelled
@@ -2559,12 +2557,8 @@ window.addEventListener("load", () => {
     _loadPlan.start(loadEntries);
 
     // ── Build tracking ───────────────────────────────────────────────────
-    // A card is ready once its icon has settled (loaded, or given up on after
-    // the fallback tiers). The loaded state starts only when every card of
-    // every page is ready, then renderPage lets the pages through. Icons are
-    // already loading in parallel, so ready is marked the moment each one
-    // settles: the old per-card stagger only delayed this and was never seen
-    // (a page is only revealed once all of it is built).
+    // Cards become ready as their icons settle. Only the restored page blocks
+    // the first paint; off-page icons continue loading in the background.
     let left = imagePromises.length;
 
     let renderQueued = false;
@@ -3412,7 +3406,11 @@ window.addEventListener("load", () => {
     const stacked        = window.WS_Paging?.effective?.().layout === "pageless";
     const activePromises = promises.filter(p => stacked || p.card._viewPage === restorePage).map(p => p.promise);
     const settle         = activePromises.length ? Promise.all(activePromises) : Promise.resolve();
-    settle.finally(() => {
+    const buildAtLoad = _buildId;
+    settle.then(() => {
+      if (buildAtLoad !== _buildId) return;
+      runLoaderSequence();
+      if (typeof window.renderPage === "function") window.renderPage();
       if (typeof window._restoreScrollY === "function") window._restoreScrollY();
     });
 
