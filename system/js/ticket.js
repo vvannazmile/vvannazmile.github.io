@@ -265,11 +265,13 @@
     const el = document.getElementById("dashTicketId");
     if (!el) return;
     const t = id();
-    el.textContent = t || "no ticket";
+    el.hidden = !t;
+    el.setAttribute("aria-hidden", String(!t));
+    el.tabIndex = t ? 0 : -1;
+    el.textContent = t;
     el.classList.toggle("is-empty", !t);
-    el.title = !t ? "No access ticket yet"
-             : approved() ? "Your ticket id (click to copy)"
-             : `Your ticket id: ${status() || "pending"} (click to copy)`;
+    el.title = !t ? "" : approved() ? "Your ticket id (click to copy)"
+      : `Your ticket id: ${status() || "pending"} (click to copy)`;
   }
 
   document.addEventListener("ws:ticket-change", paintDashboard);

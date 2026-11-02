@@ -10,10 +10,11 @@
 <!-- Debug layout editor: must be set before any other script runs. -->
 <script>window.__WS_DEBUG = true;</script>
 
-<!-- Asset data comes from Apps Script, which redirects to
-     script.googleusercontent.com — open both connections right away. -->
+<!-- Apps Script still serves ticketed user data; the public asset library
+     is fetched from the SQL Worker. -->
 <link rel="preconnect" href="https://script.google.com" crossorigin />
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
+<link rel="preconnect" href="https://ankom-api.ankomstudios.workers.dev" crossorigin />
 <!-- Images, themes and the loader gif come from raw.githubusercontent.com; the
      CDN hosts serve Shoelace and Font Awesome. Warm those connections up too. -->
 <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
@@ -30,27 +31,23 @@
 <script src="system/js/wordfilter.js"></script>
 
 <script>
-// Start the asset fetch now, from the <head>, instead of waiting for every
-// stylesheet, CDN script and main.js to download and DOMContentLoaded to
-// fire. main.js's loadAssets() picks this promise up (once) if the URL
-// matches, so the JSON is usually already parsed by the time it needs it.
+// Start the public SQL asset fetch now, while styles and scripts load.
 (function () {
-  window.WS_SHEET_URL = window.WS_ENDPOINTS.data;   // endpoints.js
+  window.WS_SHEET_URL = window.WS_ENDPOINTS.library;   // consumed by main.js
   try {
-    // Only for a browser whose access ticket is already approved (see
-    // ticket.js); everyone else waits at the ticket gate, and the backend
-    // would refuse the request anyway.
-    var ticket = localStorage.getItem("ws_ticket_id");
-    if (!ticket || localStorage.getItem("ws_ticket_status") !== "approved") { window.__wsAssetsPrefetch = null; return; }
-    // (No data-cache check here: this page always reads the live sheet, see
-    // datacache.js, so the early request is always the one that gets used.)
     var url = window.WS_SHEET_URL;
-    var key = localStorage.getItem("ws_ticket_key");
-    var p = fetch(url + (url.indexOf("?") === -1 ? "?" : "&") + "ticket=" + encodeURIComponent(ticket) + (key ? "&key=" + encodeURIComponent(key) : "") + "&_=" + Date.now(), { cache: "no-store" })
+    var requestUrl = new URL(url, location.href);
+    requestUrl.searchParams.set("limit", "200");
+    requestUrl.searchParams.set("page", "1");
+    requestUrl.searchParams.set("_", String(Date.now()));
+    var controller = new AbortController();
+    var timeout = setTimeout(function () { controller.abort(); }, 12000);
+    var p = fetch(requestUrl.href, { cache: "no-store", signal: controller.signal })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
-      });
+      })
+      .finally(function () { clearTimeout(timeout); });
     p.catch(function () {}); // handled by loadAssets; silences "unhandled rejection" if unused
     window.__wsAssetsPrefetch = { url: url, promise: p };
   } catch (_) { window.__wsAssetsPrefetch = null; }
@@ -243,7 +240,7 @@
       <span id="dashNickname" title="Your nickname">Guest</span>
       <span id="dashUsername" title="Your username (on your ticket)"></span>
     </span>
-    <code id="dashTicketId" role="button" tabindex="0">no ticket</code>
+    <code id="dashTicketId" role="button" tabindex="0" hidden></code>
   </div>
   <a href="#" id="openUpdates" title="See what's new">Updates &amp; changes</a>
     <a href="system/pages/credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>

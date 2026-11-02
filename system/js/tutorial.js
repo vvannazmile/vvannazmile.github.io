@@ -79,7 +79,8 @@
     restart: () => { try { localStorage.removeItem(DONE_KEY); } catch (_) {} location.reload(); },
   };
 
-  const ticketNeeded = () => !!window.WS_Ticket && !window.WS_Ticket.approved();
+  const ticketNeeded = () => window.WS_TICKETS_ENABLED !== false
+    && !!window.WS_Ticket && !window.WS_Ticket.approved();
   // Kept around even after the tour is done: a revoked ticket brings the
   // ticket screens back (ws:ticket-gate).
   if (!pending && !window.WS_Ticket) return;

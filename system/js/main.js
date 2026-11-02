@@ -164,7 +164,7 @@ window.addEventListener("load", () => {
     window.config = {
       fallbackImage:    "https://raw.githubusercontent.com/01110010-00110101/01110010-00110101.github.io/main/system/images/404_blank.png",
       fallbackLink:     "https://wnasmile.github.io./source/dino/",
-      // mydex.html's <head> sets WS_SHEET_URL and starts the asset fetch
+      // index.html's <head> sets WS_SHEET_URL and starts the asset fetch
       // early; this literal is only the fallback for pages that don't.
       sheetUrl:         window.WS_SHEET_URL || window.WS_ENDPOINTS.data,
       devBuildUrl:      window.WS_ENDPOINTS.library || "",
@@ -3075,8 +3075,9 @@ window.addEventListener("load", () => {
       const saved = await cache.read("searchquotes");
       if (Array.isArray(saved)) return (_searchQuotes = saved);
     }
+    if (!window.WS_Ticket?.approved?.()) return (_searchQuotes = []);
     try {
-      const url = `${window.config.sheetUrl}?type=searchQuotes`;
+      const url = `${window.WS_ENDPOINTS.data}?type=searchQuotes`;
       await ticketReady();
       const data = await fetchJSONRetry(() => bustCache(url));
       const values = data && typeof data === "object" && !Array.isArray(data)
@@ -3218,20 +3219,23 @@ window.addEventListener("load", () => {
     }).catch(() => {});
   }
 
-  // DevBuild assets come from the public D1 library. Convert its rows to the
-  // same shape as the DATA feed so the existing asset pipeline stays shared.
+  // The public D1 library feeds the homepage and DevBuild. Convert its rows
+  // to the same shape as the DATA feed so the asset pipeline stays shared.
   const SQL_PAGE_LIMIT = 200;
   const SQL_MAX_PAGES = 50;
+  const SQL_PAGE_CONCURRENCY = 4;
   const _isSqlFeed = (url) => !!url && url === window.WS_ENDPOINTS?.library;
 
   function _sqlItemToRow(item) {
     const flags = Array.isArray(item.flags) ? item.flags.filter(Boolean) : [];
     const value = (v) => (v == null ? "" : v);
+    const image = value(item.image).trim();
+    const unavailableIcon = /^https?:\/\/ws\.ankomstudios\.com\/icons2\//i.test(image);
     return {
       title: value(item.title),
       author: value(item.author),
       link: value(item.link),
-      image: value(item.image),
+      image: unavailableIcon ? "" : image,
       category: value(item.category),
       "sub-category": value(item.sub_category),
       status: value(item.status),
@@ -3245,19 +3249,39 @@ window.addEventListener("load", () => {
     };
   }
 
-  async function fetchSqlAssets(feedUrl) {
+  function _sqlPageUrl(feedUrl, page) {
+    const url = new URL(feedUrl, location.href);
+    url.searchParams.set("limit", String(SQL_PAGE_LIMIT));
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("_", String(Date.now()));
+    return url.href;
+  }
+
+  async function fetchSqlAssets(feedUrl, firstPage) {
     const rows = [];
-    for (let page = 1; page <= SQL_MAX_PAGES; page++) {
-      const body = await fetchJSONRetry(() => {
-        const url = new URL(feedUrl, location.href);
-        url.searchParams.set("limit", String(SQL_PAGE_LIMIT));
-        url.searchParams.set("page", String(page));
-        url.searchParams.set("_", String(Date.now()));
-        return url.href;
-      });
+    const fetchPage = async (page) => {
+      const body = await fetchJSONRetry(() => _sqlPageUrl(feedUrl, page));
       if (!Array.isArray(body?.items)) throw new Error("SQL library feed returned no items array");
-      rows.push(...body.items.map(_sqlItemToRow));
-      if (body.items.length < SQL_PAGE_LIMIT) break;
+      return body.items;
+    };
+    const appendPage = (items) => rows.push(...items.map(_sqlItemToRow));
+    const firstItems = firstPage ? firstPage.items : await fetchPage(1);
+    if (!Array.isArray(firstItems)) throw new Error("SQL library feed returned no items array");
+    appendPage(firstItems);
+    if (firstItems.length < SQL_PAGE_LIMIT) return rows;
+
+    // Keep requests bounded while removing the serial network wait between
+    // SQL pages; batches also stop promptly when the final short page arrives.
+    for (let start = 2; start <= SQL_MAX_PAGES; start += SQL_PAGE_CONCURRENCY) {
+      const pages = Array.from(
+        { length: Math.min(SQL_PAGE_CONCURRENCY, SQL_MAX_PAGES - start + 1) },
+        (_, index) => start + index,
+      );
+      const batch = await Promise.all(pages.map(fetchPage));
+      for (const items of batch) {
+        appendPage(items);
+        if (items.length < SQL_PAGE_LIMIT) return rows;
+      }
     }
     return rows;
   }
@@ -3270,12 +3294,12 @@ window.addEventListener("load", () => {
   let _ticketRefusalRetries = 0;
   async function loadAssets() {
     const fetchUrl = window._activeFetchUrl || config.sheetUrl;
-    const cacheable = fetchUrl === config.sheetUrl && !!window.WS_DataCache?.enabled();
+    const sqlFeed = _isSqlFeed(fetchUrl);
+    const cacheable = !sqlFeed && fetchUrl === config.sheetUrl && !!window.WS_DataCache?.enabled();
     let raw;
 
-    // No fetch at all until this browser's access ticket is approved; the
-    // ticket gate (ticket.js) is up over the loader meanwhile.
-    await ticketReady();
+    // Public SQL assets are open; retain the ticket gate for legacy feeds.
+    if (!sqlFeed) await ticketReady();
 
     // The <head> of index.html starts this exact request before the rest of
     // the page (css, cdn scripts, this file) has even downloaded. Use it once
@@ -3297,26 +3321,23 @@ window.addEventListener("load", () => {
     const isRefusal = (r) => !!(r && !Array.isArray(r) && r.ticket && window.WS_Ticket);
 
     if (raw === undefined) try {
-      if (early && early.url === fetchUrl && early.promise) {
-        // The prefetch goes out before the page knows whether this browser
-        // has a ticket, and it has no deadline of its own. A brand-new
-        // visitor's prefetch is always refused ("missing"), and acting on
-        // that stale answer used to wipe the ticket they had just been
-        // given and put the gate back up. So: cap the wait, and treat a
-        // refusal (or a failure) as "ask again now that the ticket is
-        // approved".
-        try {
-          raw = await Promise.race([
-            early.promise,
-            new Promise((_, rej) => setTimeout(() => rej(new Error("prefetch timed out")), 12000)),
-          ]);
-        } catch (_) { raw = undefined; }
-        if (isRefusal(raw)) raw = undefined;
-      }
-      if (raw === undefined) {
-        raw = _isSqlFeed(fetchUrl)
-          ? await fetchSqlAssets(fetchUrl)
-          : await fetchJSONRetry(() => bustCache(fetchUrl));
+      if (sqlFeed) {
+        let firstPage;
+        if (early && early.url === fetchUrl && early.promise) {
+          try { firstPage = await early.promise; } catch (_) { firstPage = undefined; }
+        }
+        raw = await fetchSqlAssets(fetchUrl, firstPage);
+      } else {
+        if (early && early.url === fetchUrl && early.promise) {
+          try {
+            raw = await Promise.race([
+              early.promise,
+              new Promise((_, reject) => setTimeout(() => reject(new Error("prefetch timed out")), 12000)),
+            ]);
+          } catch (_) { raw = undefined; }
+          if (isRefusal(raw)) raw = undefined;
+        }
+        if (raw === undefined) raw = await fetchJSONRetry(() => bustCache(fetchUrl));
       }
 
       // A stored ticket the server no longer accepts (revoked or removed in
@@ -3343,6 +3364,9 @@ window.addEventListener("load", () => {
       if (!_isValidAssetsShape(raw)) {
         console.error("[loadAssets] Network response is not a valid array:", raw);
         throw new Error("Invalid data from network");
+      }
+      if (sqlFeed && window._containerMode === "dev") {
+        console.info(`[DevBuild] ${raw.length} assets loaded from the SQL library`, fetchUrl);
       }
       if (cacheable) window.WS_DataCache.write("assets", raw);
     } catch (err) {
