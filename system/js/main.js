@@ -225,7 +225,8 @@ window.addEventListener("load", () => {
         save();
         return on;
       },
-      viewOn: false, // true while the header toggle shows favorites
+      viewOn: false,
+      viewMode: "all",
     };
 
     window.refreshCards = () => {
@@ -2618,6 +2619,14 @@ window.addEventListener("load", () => {
       for (const c of window._allCards) for (const k of c._favKeys || [c._favKey]) if (k) byKey.set(k, c);
       const layout = new Map();
       let n = 0;
+      if (window.WS_Favorites?.viewMode === "unfavorited") {
+        for (const c of window._allCards) {
+          const keys = c._favKeys || [c._favKey];
+          if (keys.some((key) => key && window.WS_Favorites.has(key))) continue;
+          layout.set(c, { page: Math.floor(n / FAV_PAGE_SIZE) + 1, order: n++ });
+        }
+        return layout;
+      }
       for (const key of window.WS_Favorites?.list() || []) {
         const c = byKey.get(key);
         if (!c || layout.has(c)) continue;
@@ -2871,27 +2880,39 @@ window.addEventListener("load", () => {
     let savedMainPage = 1;
     let savedFavPage  = 1;
 
-    const paintFavBtn = (on) => {
+    const paintFavBtn = (mode) => {
       if (!favBtn) return;
+      const on = mode === "favorites";
       if (favImg) favImg.src = favImg.src.replace(/(faved|unfav)\.gif(\?.*)?$/, on ? "faved.gif" : "unfav.gif");
-      favBtn.title = on ? "Showing favorites (click for all assets)" : "Show favorites";
+      favBtn.title = mode === "favorites" ? "Showing favorites (click for all assets)"
+        : mode === "unfavorited" ? "Showing unfavorited assets (click for all assets)"
+        : "Show favorites";
       favBtn.setAttribute("aria-pressed", String(on));
+      favBtn.setAttribute("aria-label", favBtn.title);
     };
 
-    favBtn?.addEventListener("click", () => {
+    const setFavView = (mode) => {
       if (window._reloading || !window.WS_Favorites) return;
-      const on = !favViewOn();
-      if (on) savedMainPage = +window.currentPage || 1;
-      else    savedFavPage  = +window.currentPage || 1;
+      const on = mode !== "all";
+      if (favViewOn()) savedFavPage = +window.currentPage || 1;
+      else savedMainPage = +window.currentPage || 1;
 
       window.WS_Favorites.viewOn = on;
+      window.WS_Favorites.viewMode = mode;
       window.currentPage = on ? savedFavPage : savedMainPage;
       if (!on) for (const c of window._allCards) c.style.order = "";
 
-      paintFavBtn(on);
+      paintFavBtn(mode);
       filterAssets(searchInput ? searchInput.value : "");
+    };
+
+    window.WS_Favorites.toggleView = () => {
+      setFavView(window.WS_Favorites.viewMode === "favorites" ? "unfavorited" : "favorites");
+    };
+    favBtn?.addEventListener("click", () => {
+      setFavView(favViewOn() ? "all" : "favorites");
     });
-    paintFavBtn(false);
+    paintFavBtn(window.WS_Favorites?.viewMode || "all");
 
     function _handlePageNavigation(pageNum) {
       if (!Number.isFinite(pageNum)) return;

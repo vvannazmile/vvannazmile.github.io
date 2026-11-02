@@ -122,7 +122,7 @@ document.addEventListener("sortModeChanged", () => {
 
 document.addEventListener("keydown", (e) => {
   const tag = document.activeElement?.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || document.activeElement?.isContentEditable) return;
 
   if (e.key === "Escape") {
     const panicURL = localStorage.getItem("panicURL");
@@ -166,6 +166,24 @@ document.addEventListener("keydown", (e) => {
     if (indicator) {
       if (next === "off") { indicator.classList.remove("show"); }
       else { indicator.textContent = labels[next]; indicator.classList.add("show"); }
+    }
+    return;
+  }
+
+  if (e.key === "f" || e.key === "F") {
+    if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+    window.WS_Favorites?.toggleView?.();
+    return;
+  }
+
+  if (e.key === "Enter" && !e.repeat && !e.altKey && !e.ctrlKey && !e.metaKey
+    && tag !== "BUTTON" && tag !== "A" && !document.activeElement?.closest?.('[aria-modal="true"]')) {
+    const toTopBtn = document.getElementById("toTopBtn");
+    const style = toTopBtn && getComputedStyle(toTopBtn);
+    if (toTopBtn && !toTopBtn.disabled && toTopBtn.getClientRects().length
+      && style.display !== "none" && style.visibility === "visible") {
+      e.preventDefault();
+      toTopBtn.click();
     }
     return;
   }

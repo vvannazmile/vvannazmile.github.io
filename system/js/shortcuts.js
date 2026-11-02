@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
     { keys: ["Esc"],             label: "Panic: jump to your saved panic URL" },
     { keys: ["T"],               label: "Cycle incognito mode (off, about, blob)" },
     { keys: ["R"],               label: "Refetch assets" },
+    { keys: ["F"],               label: "Switch between favorites and unfavorited assets" },
+    { keys: ["Enter"],           label: "Scroll to the top when the Top button is visible" },
     { keys: ["←", "→"],          label: "Previous / next page", joiner: " " },
     { keys: ["0"],               label: "Reset to the Redux theme" },
     { keys: ["1", "9"],          label: "Jump to one of your theme shortcuts", joiner: "–" },
@@ -41,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="sc-scroll">
         <div class="sc-head">
           <h2 id="scTitle">Shortcuts</h2>
-          <p class="sc-sub">Press these anywhere on the page, as long as you're not typing in a box.</p>
+          <p class="sc-sub">Press these anywhere on the page, as long as you're not typing in a field.</p>
         </div>
         <div class="sc-banner" hidden></div>
         <ul class="sc-list">${rows}</ul>
