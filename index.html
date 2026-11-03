@@ -67,8 +67,8 @@
 
 <script>
 // Preload whichever theme is actually cached as active (see themify.js's
-// ws_theme_cache), instead of always warming up redux's images regardless
-// of what the user actually last used. Falls back to redux's own images on
+// ws_theme_cache), instead of always warming up Nexus's images regardless
+// of what the user actually last used. Falls back to Nexus's own images on
 // a first-ever visit, when nothing has been cached yet.
 (function () {
   // No approved ticket = the ticket / onboarding screen is up and the page
@@ -77,10 +77,10 @@
   try { if (localStorage.getItem("ws_ticket_status") !== "approved") return; } catch (_) { return; }
 
   var FALLBACK = [
-    "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/headerBg.png",
-    "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/quoteBg.png",
-    "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/mainBg.png",
-    "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/footerBg.png"
+    "https://ws.ankomstudios.com/themes/nexus/header/splash.png",
+    "https://ws.ankomstudios.com/themes/nexus/quote/splash.png",
+    "https://ws.ankomstudios.com/themes/nexus/main/splash.png",
+    "https://ws.ankomstudios.com/themes/nexus/footer/splash.png"
   ];
 
   function isPreloadableImage(v) {
@@ -91,15 +91,17 @@
   // Same local fallback as themify.js's _localizeSiteUrl: off the live host,
   // our own …github.io./assets/… URLs become this checkout's copy (this page
   // sits at the site root, so the bare path is enough).
-  var LIVE_SITE_RE = /^https?:\/\/wannasmile4evr\.github\.io\.?\//i;
-  var onLiveSite   = /^wannasmile4evr\.github\.io\.?$/i.test(location.hostname);
+  var LIVE_SITE_RE = /^https?:\/\/(?:wannasmile4evr|vvannazmile)\.github\.io\.?\//i;
+  var onLiveSite   = /^(?:wannasmile4evr|vvannazmile)\.github\.io\.?$/i.test(location.hostname);
   function localize(v) { return onLiveSite ? v : String(v).trim().replace(LIVE_SITE_RE, ""); }
 
   var urls = null;
   try {
-    var activeId = (localStorage.getItem("selectedTheme") || "redux").trim().toLowerCase();
+    var selectedId = (localStorage.getItem("selectedTheme") || "nexus").trim().toLowerCase();
+    var explicitlyApplied = localStorage.getItem("ws_theme_explicit") === "1";
+    var activeId = selectedId === "redux" && !explicitlyApplied ? "nexus" : selectedId;
     var cache    = JSON.parse(localStorage.getItem("ws_theme_cache") || "{}");
-    var row      = cache && typeof cache === "object" ? cache[activeId] : null;
+    var row      = cache && typeof cache === "object" && activeId !== "nexus" ? cache[activeId] : null;
     if (row) urls = [row[3], row[4], row[5], row[6]].filter(isPreloadableImage);
   } catch (_) { urls = null; }
 
@@ -274,7 +276,7 @@
 
 <footer class="footer">
   <div class="footer-links">
-    <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io" target="_blank" rel="noopener noreferrer">source</a>
+    <a href="https://github.com/vvannazmile/vvannazmile.github.io" target="_blank" rel="noopener noreferrer">source</a>
     <a href="system/pages/dmca/index.html" target="_blank">DMCA</a>
     <a href="https://discord.gg/6DxVZqKYtJ" target="_blank">Discord</a>
     <a href="system/pages/download/index.html" target="_blank" data-ws-browser-only>Desktop app</a>

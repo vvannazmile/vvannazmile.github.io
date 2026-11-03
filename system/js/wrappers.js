@@ -3,9 +3,9 @@
 // ── Card wrappers (WrapperWS) ──────────────────────────────────────────
 // A wrapper is the profile card's BACKGROUND (not the banner): an image
 // drawn behind everything on the card, scaled up until its height fills
-// the card, centred, with any extra width cut off. The list comes from the
-// CUST project (?type=wrappers, sheet "WrapperWS") and every wrapper's art
-// lives at a predictable mediabaseWS path:
+// the card, centred, with any extra width cut off. The list is the local
+// WrapperWS snapshot in /system/json/wrappers.json and each wrapper's art lives at
+// a predictable mediabaseWS path:
 //
 //   wrappers/<id>/splash.<ext>
 //
@@ -22,7 +22,7 @@
 // (0-100, default 100) and applied to whichever wrapper is on.
 //
 // localStorage "pfpWrapper" holds the wrapper's full image URL ("" = none),
-// so the card keeps working before the sheet has loaded. ws_wrapper_cache
+// so the card keeps working before the catalog has loaded. ws_wrapper_cache
 // remembers the last good list for an instant / offline library.
 (() => {
   const BASE      = "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/wrappers/";
@@ -57,15 +57,8 @@
   let _fetch = null;
   function load() {
     if (_fetch) return _fetch;
-    _fetch = (typeof ticketReady === "function" ? ticketReady() : Promise.resolve())
-      .then(() => fetch(bustCache(`${window.WS_ENDPOINTS.cust}?type=wrappers`), { cache: "no-store" }))
-      .then((r) => r.json())
+    _fetch = window.WS_LocalCatalogs.load("wrappers")
       .then((rows) => {
-        if (!Array.isArray(rows)) {
-          const err = new Error((rows && rows.error) || "Wrapper feed did not return a list.");
-          err.ticket = rows && rows.ticket;
-          throw err;
-        }
         const list = rows.map(parseRow).filter(Boolean);
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch (_) {}
         return list;

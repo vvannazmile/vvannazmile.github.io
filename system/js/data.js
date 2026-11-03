@@ -17,7 +17,7 @@
     "incognitoMode",
     "panicURL",
     "accessPassword",
-    "theme",
+    "theme", "selectedTheme", "ws_theme_explicit",
     "profileNickname", "profilePfp",
     // profile.js's real keys (the two above are older names)
     "nickname", "profilePic", "pfpPixelated", "profileBanner", "pfpAlign", "pfpFrame", "pfpFrameScale", "pfpAvatarSize", "pfpShape", "pfpLayout", "pfpWrapper", "pfpWrapperOpacity", "pfAdvancedEdit", "ws_profile_setup",
@@ -279,7 +279,7 @@
     "dismissedUpdateVersion",
     "_realTitle", "_realFavicon",
     "ws_selected_widgets", "ws_active_widget", "ws_widgets_hidden", "ws_widget_cache",
-    "ws_selected_themes", "ws_theme_cache",
+    "ws_selected_themes", "ws_theme_cache", "ws_theme_explicit",
     "ws_selected_gifpacks", "ws_active_gifpack", "ws_custom_gifpacks",   // ws_custom_gifpacks: your own gif packs (themify.js)
     "ws_cursors_enabled", "ws_active_cursor", "ws_cursor_size",   // custom cursors (cursors.js)
     // Paging settings (paging.js, the Settings page)
@@ -319,6 +319,7 @@
     } catch (_) {}
     [...DATA_KEYS, ...CLEARABLE_KEYS, "ws_ticket_backup"].forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
     try { window.WS_DataCache?.clear(); } catch (_) {}
+    try { indexedDB.deleteDatabase("ws_library"); } catch (_) {}   // saved library file (main.js)
   }
 
   async function clearData() {
@@ -357,6 +358,7 @@
 
     if (startOver) wipeForNewTicket();
     else CLEARABLE_KEYS.forEach(k => localStorage.removeItem(k));
+    try { indexedDB.deleteDatabase("ws_library"); } catch (_) {}   // saved library file (main.js)
 
     try {
       const htmlTitle = document.querySelector("title");

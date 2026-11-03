@@ -122,7 +122,7 @@ function getPixelatedSrc(srcUrl) {
 // 4:1 cropper in the banner library (the user picks the strip) and are
 // saved at 1200×300 JPEG (keeps localStorage small); a GIF under
 // BANNER_GIF_MAX is kept as-is, uncropped, so it stays animated. Banners
-// picked from the gallery (BannerWS, served by CUST) are stored as
+// picked from the gallery (BannerWS, stored in /system/json/banners.json) are saved as
 // "site:<path from the site root>", e.g. "site:assets/media/banners/banner7.jpg",
 // so they work from any page and survive a data export.
 const BANNER_KEY       = "profileBanner";
@@ -775,7 +775,7 @@ function paintWrapperControls() {
 }
 
 // BannerWS columns: name | identification | type | src | thumb | animated | pixelated
-// (src/thumb are paths from the site root; type "soon" hides a row).
+// (src/thumb may be root-relative paths or absolute URLs; type "soon" hides a row).
 function parseBanners(rows) {
   if (!Array.isArray(rows)) throw new Error((rows && rows.error) || "Banner feed did not return a list.");
   const yes = (v) => /^(true|yes|1)$/i.test(String(v || "").trim());
@@ -790,7 +790,7 @@ function parseBanners(rows) {
       pixelated: yes(r.pixelated),
     }))
     .filter(b => b.id && b.src && b.type !== "soon")
-    .map(b => ({ ...b, value: BANNER_SITE + b.src }));
+    .map(b => ({ ...b, value: /^(?:https?:)?\/\//i.test(b.src) ? b.src : BANNER_SITE + b.src }));
 }
 
 function cachedBanners() {
@@ -801,9 +801,7 @@ function cachedBanners() {
 let _bannerFetch = null;
 function loadBanners() {
   if (_bannerFetch) return _bannerFetch;
-  _bannerFetch = (typeof ticketReady === "function" ? ticketReady() : Promise.resolve())
-    .then(() => fetch(bustCache(`${window.WS_ENDPOINTS.cust}?type=banners`), { cache: "no-store" }))
-    .then(r => r.json())
+  _bannerFetch = window.WS_LocalCatalogs.load("banners")
     .then(rows => {
       const list = parseBanners(rows);
       try { localStorage.setItem(BANNER_CACHE_KEY, JSON.stringify(list)); } catch (_) {}
@@ -826,11 +824,12 @@ function renderBannerGrid(list, message) {
     onPick: () => document.getElementById("profileBannerInput")?.click(),
   })];
   const saved = savedProfile().banner;
+  const galleryValues = new Set(cachedBanners().map(b => b.value));
   // An uploaded (data URL) banner, so it can be picked again.
-  [saved, _pending.banner].filter((b, i, a) => b && !b.startsWith(BANNER_SITE) && a.indexOf(b) === i)
+  [saved, _pending.banner].filter((b, i, a) => b && !galleryValues.has(b) && !b.startsWith(BANNER_SITE) && a.indexOf(b) === i)
     .forEach(src => tiles.push(makeTile({ value: src, img: bannerUrl(src), label: "Yours", index: tiles.length, onPick: () => pickBanner(src) })));
   list.forEach(b => tiles.push(makeTile({
-    value: b.value, img: bannerUrl(BANNER_SITE + (b.thumb || b.src)), label: b.name || b.id,
+    value: b.value, img: bannerUrl(/^(?:https?:)?\/\//i.test(b.thumb || b.src) ? (b.thumb || b.src) : BANNER_SITE + (b.thumb || b.src)), label: b.name || b.id,
     tag: b.animated ? "GIF" : "", pixelated: b.pixelated, index: tiles.length,
     onPick: () => pickBanner(b.value),
   })));

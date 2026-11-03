@@ -3272,7 +3272,75 @@ window.addEventListener("load", () => {
     return url.href;
   }
 
+  // ── Exported library file (items.json) ───────────────────────────────
+  // The Worker exports the whole library to ONE JSON file ({ updated, items })
+  // in R2, so a tab never pages through the database. This keeps a copy in
+  // IndexedDB (not localStorage: it is ~700 KB) and reuses it for 3 hours
+  // before asking for the file again. R (refetch) always asks again. If the
+  // file can't be reached, an older saved copy is used rather than a crash.
+  const LIB_TTL_MS = 3 * 60 * 60 * 1000;
+  const LIB_DB = "ws_library";
+  const _isSnapshotFeed = (url) => {
+    try { return /\.json$/i.test(new URL(url, location.href).pathname); } catch (_) { return false; }
+  };
+
+  function _libDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error("no indexedDB"));
+      const req = indexedDB.open(LIB_DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore("snap");
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function _libRead(url) {
+    try {
+      const db = await _libDb();
+      return await new Promise((resolve) => {
+        const get = db.transaction("snap").objectStore("snap").get(url);
+        get.onsuccess = () => { db.close(); resolve(get.result || null); };
+        get.onerror = () => { db.close(); resolve(null); };
+      });
+    } catch (_) { return null; }
+  }
+  async function _libWrite(url, value) {
+    try {
+      const db = await _libDb();
+      await new Promise((resolve) => {
+        const tx = db.transaction("snap", "readwrite");
+        tx.objectStore("snap").put(value, url);
+        tx.oncomplete = tx.onerror = tx.onabort = () => { db.close(); resolve(); };
+      });
+    } catch (_) {}
+  }
+
+  async function loadLibrarySnapshot(url) {
+    const saved = await _libRead(url);
+    const fresh = saved && Array.isArray(saved.items) && Date.now() - saved.savedAt < LIB_TTL_MS;
+    if (fresh && !window._forceRefetch) return saved.items;
+
+    try {
+      // No cache-buster: the file is cacheable. "no-cache" makes the browser
+      // revalidate (a cheap 304 when nothing changed); "reload" is for R.
+      const res = await fetch(url, { cache: window._forceRefetch ? "reload" : "no-cache" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} loading the library file`);
+      const body = await res.json();
+      if (!Array.isArray(body?.items)) throw new Error("Library file has no items array");
+      _libWrite(url, { savedAt: Date.now(), updated: body.updated || "", items: body.items });
+      return body.items;
+    } catch (err) {
+      if (saved && Array.isArray(saved.items)) {
+        console.warn("[library] using the saved copy:", err.message);
+        return saved.items;
+      }
+      throw err;
+    }
+  }
+
   async function fetchSqlAssets(feedUrl, firstPage) {
+    if (_isSnapshotFeed(feedUrl)) {
+      return (await loadLibrarySnapshot(feedUrl)).map(_sqlItemToRow);
+    }
     const rows = [];
     const fetchPage = async (page) => {
       const body = await fetchJSONRetry(() => _sqlPageUrl(feedUrl, page));

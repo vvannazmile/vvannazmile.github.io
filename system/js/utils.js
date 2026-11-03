@@ -204,7 +204,7 @@ const showToast = window.showToast;
 // (updates.js) and the news page. Cached in sessionStorage for 5 minutes so
 // moving between pages doesn't hit the GitHub API's unauthenticated rate limit.
 (() => {
-  const REPO      = "wannasmile4evr/wannasmile4evr.github.io";
+  const REPO      = "vvannazmile/vvannazmile.github.io";
   const CACHE_KEY = "ws_latest_commit_cache";
   const CACHE_TTL_MS = 5 * 60 * 1000;
   let promise = null;

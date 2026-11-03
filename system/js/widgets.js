@@ -21,9 +21,8 @@
 //   ws_selected_widgets  the store's picks, in order          (store.html)
 //   ws_active_widget     which pick the bubble currently holds
 //   ws_widgets_hidden    "true" while \ has hidden them
-//   ws_widget_cache      the last widget list from the server, so the
-//                        bubble shows straight away on the next load
-//                        (refreshed from the server every load)
+//   ws_widget_cache      the last widget list, so the bubble can show
+//                        straight away on the next load
 //
 // WidgetBaseWS columns (row 1 = headers; matched case/space-insensitively):
 //   A id               B widget-name       C widget-url      D widget-icon
@@ -32,7 +31,6 @@
 // widget is open (blank = white). It sits BEFORE description, so the sheet's
 // G column is x-color and H is description.
 (() => {
-  const SHEETS_URL    = `${window.WS_ENDPOINTS.cust}?type=widgets`; // endpoints.js
   const SELECTION_KEY = "ws_selected_widgets";
   const ACTIVE_KEY    = "ws_active_widget";
   const HIDDEN_KEY    = "ws_widgets_hidden";
@@ -470,11 +468,7 @@
       applySelection();
     }
     try {
-      await ticketReady();
-      const res = await fetch(bustCache(SHEETS_URL), { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const widgets = await res.json();
-      if (!Array.isArray(widgets)) throw new Error("Widget feed did not return an array.");
+      const widgets = await window.WS_LocalCatalogs.load("widgets");
       window._availableWidgets = normalizeList(widgets);
       write(CACHE_KEY, JSON.stringify(window._availableWidgets));
     } catch (err) {

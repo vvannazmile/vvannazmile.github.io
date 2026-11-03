@@ -6,7 +6,7 @@
 const UI_THEME_SHORTCUT_KEY = "ws_selected_themes"; // set by store.html: up to 9 theme ids, pick order
 
 // Keys "1".."9" go to whatever the user picked in store.html's Themes
-// section, in pick order; "0" always jumps back to redux as a safe,
+// section, in pick order; "0" always jumps back to Nexus as a safe,
 // unconditional reset. Rebuilt on load and whenever the shortcut selection
 // changes (including from another tab — see the storage listener below).
 //
@@ -19,7 +19,7 @@ function _buildThemeMap() {
   catch (_) { selected = []; }
   if (!Array.isArray(selected)) selected = [];
 
-  const map = { "0": "redux" };
+  const map = { "0": "nexus" };
   selected.slice(0, 9).forEach((id, i) => { map[String(i + 1)] = id; });
   return map;
 }
@@ -62,6 +62,7 @@ function _applyTheme(keyOrName) {
   document.documentElement.setAttribute("theme", theme);
   window.currentTheme = theme;
   localStorage.setItem("selectedTheme", theme);
+  localStorage.setItem("ws_theme_explicit", "1");
   if (typeof _rememberThemeRow === "function") _rememberThemeRow(theme);
 
   if (theme === "custom") {

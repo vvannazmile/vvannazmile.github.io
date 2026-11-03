@@ -1,30 +1,63 @@
 "use strict";
 
 // ── Backend endpoints ──────────────────────────────────────────────────
-// The three Apps Script projects (.documentation/api/) and what each serves:
+// The two Apps Script projects (.documentation/api/) and what each serves:
 //
 //   data  data.gs  quotes, sync, tickets, legacy asset feed
 //                  (quotes.js, ticket.js, legacy main.js feeds)
-//   cust  cust.gs  themes, widgets, banners, gif packs, frames, wrappers
-//                  (themify.js, widgets.js, profile.js, frames.js, wrappers.js,
-//                  store page)
 //   mod   mod.gs   word filter, taken usernames — open, no ticket
 //                  (wordfilter.js)
 //
-// Paste each project's /exec URL here after deploying it. This file loads
-// first on every page (before wordfilter.js in <head>), so everything else
-// can read window.WS_ENDPOINTS.
+// Catalogs (themes, banners, frames, gif packs, widgets, wrappers) come only
+// from the local JSON files under /json via WS_LocalCatalogs below.
+//
+// This file loads before other system scripts, so they can read
+// window.WS_ENDPOINTS and the local catalog loader.
 //
 window.WS_ENDPOINTS = Object.freeze({
   data: "https://script.google.com/macros/s/AKfycbwTLT4Hv7ThVJ2C4UlUyw7IJ7joif706yTLAkHMV5kFFHs2DBLTC9iw34YAL-BIbmwQ/exec",
-  cust: "https://script.google.com/macros/s/AKfycbztiWN2Xfkot_i5keu7o3Sm5z9sbXyTvDwIz9Yd23d-pg_Gl6ckIJrI71RV_K6jPIaM/exec",
   mod:  "https://script.google.com/macros/s/AKfycbyorR1RSI3-aYv91IIobUxMmNv8HKMyYvNKhwgR27AXetGROjkE_eYgBNyW5hwyPh_w/exec",
   // Public SQL (D1) library used for the homepage and DevBuild assets.
-  library: "https://ankom-api.ankomstudios.workers.dev/library/items/",
+  // One exported JSON file ({ updated, items }) rebuilt by the ankom-api Worker
+  // from D1 and served straight from R2, so opening a tab never reads D1.
+  // main.js keeps its own copy for 3 hours (see loadLibrarySnapshot).
+  library: "https://ws.ankomstudios.com/library/items.json",
   // Your Cloudflare Worker HTML-fetch endpoint used by "qwerty" assets.
   // This fetches the initial HTML document only; it is not a WebSocket relay.
   fetch: "https://ankom-url-api.ankomstudios.workers.dev/fetch?url=",
 });
+
+window.WS_LocalCatalogs = (() => {
+  const files = Object.freeze({
+    banners: "banners.json",
+    frames: "frames.json",
+    gifpacks: "gifpacks.json",
+    themes: "themes.json",
+    widgets: "widgets.json",
+    wrappers: "wrappers.json",
+  });
+  const base = new URL("../json/", document.currentScript?.src || location.href);
+  const pending = new Map();
+
+  function load(type) {
+    const file = files[type];
+    if (!file) return Promise.reject(new Error(`Unknown local catalog: ${type}`));
+    if (!pending.has(type)) {
+      pending.set(type, fetch(new URL(file, base), { cache: "no-cache" }).then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status} loading ${file}`);
+        const rows = await response.json();
+        if (!Array.isArray(rows)) throw new Error(`${file} must contain a JSON array`);
+        return rows;
+      }).catch((error) => {
+        pending.delete(type);
+        throw error;
+      }));
+    }
+    return pending.get(type);
+  }
+
+  return Object.freeze({ load });
+})();
 
 // Temporary public-library transition: keep ticket APIs available, but don't
 // require ticket onboarding to browse the public SQL asset library.
@@ -54,7 +87,7 @@ window.WS_MEDIABASE = "https://raw.githubusercontent.com/wannasmile4evr/mediabas
 window.toMediabase = (() => {
   const host = location.host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const moved = new RegExp(
-    String.raw`^(?:site:|(?:https?:)?//(?:wannasmile4evr\.github\.io\.?${host ? "|" + host : ""})/(?:[^?#]*?/)?|/|(?:\.\.?/)*)` +
+    String.raw`^(?:site:|(?:https?:)?//(?:wannasmile4evr\.github\.io\.?|vvannazmile\.github\.io\.?${host ? "|" + host : ""})/(?:[^?#]*?/)?|/|(?:\.\.?/)*)` +
     String.raw`(?:assets/)?media/(banners|stickers|themes|images/profile)/`, "i");
   const direct = /^(?:site:)?((?:banners|stickers|themes|profile|frames|wrappers|gif-packs)\/.+)$/i;
   const oldRepo = /^https?:\/\/raw\.githubusercontent\.com\/wannasmile4evr\/(?:wannabase|mediabaseWS)\/main\/(.*)$/i;

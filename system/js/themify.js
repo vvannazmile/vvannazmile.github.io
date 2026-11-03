@@ -1,17 +1,28 @@
 "use strict";
 
-const DEFAULT_THEME    = "redux";
+const DEFAULT_THEME    = "nexus";
 const DEFAULT_GIF_SIZE = 128;
 
 const THEME_CACHE_KEY    = "ws_theme_cache";     // { [id]: rawRowArray }
 const THEME_SHORTCUT_KEY = "ws_selected_themes"; // [id, id, ...] up to 9, pick order
+const THEME_EXPLICIT_KEY = "ws_theme_explicit";
+// Instant-paint fallback only: the same Nexus row also lives first in
+// json/themes.json, and that copy wins as soon as the catalog has loaded.
+const BUILTIN_THEME_ROWS = [[
+  "Nexus", "nexus", "ready",
+  "https://ws.ankomstudios.com/themes/nexus/header/splash.png",
+  "https://ws.ankomstudios.com/themes/nexus/quote/splash.png",
+  "https://ws.ankomstudios.com/themes/nexus/main/splash.png",
+  "https://ws.ankomstudios.com/themes/nexus/footer/splash.png",
+  "rgba(0, 0, 0, 0.95)", "#000", "#fff", "#fff", "#ff4444",
+  "#f0f0f0", "#333", "#888", "#333", "rgba(0, 0, 0, 0.3)", "#000", "",
+]];
+window.WS_BUILTIN_THEME_ROWS = BUILTIN_THEME_ROWS;
 
 // Declared up front (rather than near _injectAllThemes further down) so it's
 // already initialized for the IIFEs later in this file that call
 // _resolveTheme() before the sheet fetch has even started.
-let _themeData = [];
-
-const _SHEETS_URL = `${window.WS_ENDPOINTS.cust}?type=themes`;   // endpoints.js
+let _themeData = [...BUILTIN_THEME_ROWS];
 
 const _COL = {
   name: 0,
@@ -53,10 +64,10 @@ const _COL = {
 };
 
 const _ROOT_CSS = `:root {
-  --header-bg: url("https://raw.githubusercontent.com/01110010-00110101/themeify/main/redux/Redux-headerbg.png");
-  --quote-bg: url("https://raw.githubusercontent.com/01110010-00110101/themeify/main/redux/Redux-quotebg.png");
-  --main-bg: url("https://raw.githubusercontent.com/01110010-00110101/themeify/main/redux/Redux-mainbg.png");
-  --footer-bg: url("https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/themes/redux/footerBg.png");
+  --header-bg: url("https://ws.ankomstudios.com/themes/nexus/header/splash.png");
+  --quote-bg: url("https://ws.ankomstudios.com/themes/nexus/quote/splash.png");
+  --main-bg: url("https://ws.ankomstudios.com/themes/nexus/main/splash.png");
+  --footer-bg: url("https://ws.ankomstudios.com/themes/nexus/footer/splash.png");
   --aside-bg: rgba(0, 0, 0, 0.95);
   --text-color: #000;
   --url-color: #fff;
@@ -107,8 +118,8 @@ function _normalizeBgValue(val) {
 // themify.js itself lives (system/js/ -> site root), so it works from
 // index.html and system/pages/ alike. On the live host they're left
 // untouched.
-const _LIVE_SITE_RE = /^https?:\/\/wannasmile4evr\.github\.io\.?\//i;
-const _ON_LIVE_SITE = /^wannasmile4evr\.github\.io\.?$/i.test(location.hostname);
+const _LIVE_SITE_RE = /^https?:\/\/(?:wannasmile4evr|vvannazmile)\.github\.io\.?\//i;
+const _ON_LIVE_SITE = /^(?:wannasmile4evr|vvannazmile)\.github\.io\.?$/i.test(location.hostname);
 const _SITE_ROOT    = new URL("../../", document.currentScript?.src || location.href).href;
 
 function _localizeSiteUrl(val) {
@@ -261,7 +272,11 @@ function _getThemeCache() {
 function _getCachedRow(id) {
   const key = (id || "").trim().toLowerCase();
   if (!key) return null;
-  return _getThemeCache()[key] || null;
+  const loaded = _themeData.find((row) => (row[_COL.id] || "").toString().trim().toLowerCase() === key);
+  if (loaded) return loaded;
+  return _getThemeCache()[key]
+    || BUILTIN_THEME_ROWS.find((row) => row[_COL.id].toLowerCase() === key)
+    || null;
 }
 
 function _cacheThemeRows(rows, ids) {
@@ -281,7 +296,7 @@ function _cacheThemeRows(rows, ids) {
 // of new themes looking "disabled": nothing outside that fixed list could
 // ever be resolved to anything but DEFAULT_THEME).
 function _knownThemeIds() {
-  const ids = new Set([DEFAULT_THEME]);
+  const ids = new Set([DEFAULT_THEME, "redux"]);
   for (const row of _themeData) {
     const id = (row[_COL.id] || "").toString().trim().toLowerCase();
     if (id) ids.add(id);
@@ -297,9 +312,11 @@ function _resolveTheme(raw) {
 
 (function applyGlobalTheme() {
   const raw   = localStorage.getItem("selectedTheme");
-  const theme = raw ? raw.trim() : DEFAULT_THEME;
+  let theme = raw ? raw.trim() : DEFAULT_THEME;
+  const explicitlyApplied = localStorage.getItem(THEME_EXPLICIT_KEY) === "1";
 
-  if (!raw) localStorage.setItem("selectedTheme", DEFAULT_THEME);
+  if (!explicitlyApplied && theme.toLowerCase() === "redux") theme = DEFAULT_THEME;
+  if (!raw || theme !== raw.trim()) localStorage.setItem("selectedTheme", theme);
 
   document.documentElement.setAttribute("theme", theme);
 
@@ -340,7 +357,10 @@ function applyTheme(id) {
   _rememberThemeRow(t);
   _ensureThemeBlock(t);
   document.documentElement.setAttribute("theme", t);
-  try { localStorage.setItem("selectedTheme", t); } catch (_) {}
+  try {
+    localStorage.setItem("selectedTheme", t);
+    localStorage.setItem(THEME_EXPLICIT_KEY, "1");
+  } catch (_) {}
   if (typeof window.applyThemeGifs === "function") window.applyThemeGifs(t);
 }
 
@@ -350,12 +370,10 @@ function applyTheme(id) {
 // Each pack is a local, on-disk asset set, independently selectable and
 // swappable, not tied to whichever theme happens to be active.
 //
-// Data comes from GifPacksWS (?type=gifpacks) — deliberately minimal there:
+// Data comes from the checked-in GifPacksWS snapshot — deliberately minimal:
 // no `src` column, just "width|height|pixelated" per state cell, since every
 // pack already lives at a predictable mediabaseWS gif-packs/${id}/${state}.gif
 // path. Parsed into the same {id, name, states} shape used everywhere below.
-const _GIFPACK_SHEETS_URL = `${window.WS_ENDPOINTS.cust}?type=gifpacks`;   // endpoints.js
-
 const GIF_PACK_ACTIVE_KEY    = "ws_active_gifpack";
 const GIF_PACK_CACHE_KEY     = "ws_gifpack_cache";    // { [id]: {id,name,states} }
 const GIF_PACK_SELECTION_KEY = "ws_selected_gifpacks"; // set by store.html: cycle order for [ / ]
@@ -453,11 +471,8 @@ function _parseGifPackRow(row) {
 }
 
 function _loadGifPacks() {
-  return ticketReady()
-    .then(() => fetch(bustCache(_GIFPACK_SHEETS_URL), { cache: "no-store" }))
-    .then(r => r.json())
+  return window.WS_LocalCatalogs.load("gifpacks")
     .then(rows => {
-      if (!Array.isArray(rows)) throw new Error("Gif pack feed did not return an array.");
       const map = {};
       rows.forEach(row => {
         const pack = _parseGifPackRow(row);
@@ -895,13 +910,13 @@ async function _injectAllThemes(rows) {
 
 async function fetchThemes(forceRefresh) {
   try {
-    await ticketReady();
-    const res  = await fetch(bustCache(_SHEETS_URL), { cache: "no-store" });
-    const json = await res.json();
+    const json = await window.WS_LocalCatalogs.load("themes");
 
-    if (!Array.isArray(json)) throw new Error(json.error || "Unexpected API response");
-
-    _themeData = json;
+    const jsonIds = new Set(json.map((row) => (row[_COL.id] || "").toString().trim().toLowerCase()));
+    _themeData = [
+      ...json,
+      ...BUILTIN_THEME_ROWS.filter((row) => !jsonIds.has(row[_COL.id].toLowerCase())),
+    ];
     await _injectAllThemes(_themeData);
 
     // Keep the local cache warm for whatever's actually in play: the active
@@ -916,7 +931,7 @@ async function fetchThemes(forceRefresh) {
     _cacheThemeRows(_themeData, [activeTheme, ...selected]);
 
   } catch (err) {
-    console.warn("[themify] Sheets fetch failed:", err.message);
+    console.warn("[themify] Local theme catalog failed:", err.message);
 
   }
 }
@@ -947,16 +962,11 @@ window.ThemifySheets = { applyTheme, fetchThemes, getThemeData, getThemeId, getC
 
 (async function bootSheets() {
   // Paint the last-known theme immediately from the local cache, if we have
-  // one, instead of always flashing the hardcoded redux fallback while the
+  // one, instead of always flashing the hardcoded Nexus fallback while the
   // network fetch below is still in flight.
   const cachedRow = _getCachedRow(_resolveTheme(localStorage.getItem("selectedTheme")));
   const cachedBlock = cachedRow ? await _buildThemeBlock(cachedRow) : "";
   _getStyleEl().textContent = _ROOT_CSS + (cachedBlock ? "\n\n" + cachedBlock : "");
   _checkMainBg();
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => fetchThemes(false));
-  } else {
-    fetchThemes(false);
-  }
+  fetchThemes(false);
 })();

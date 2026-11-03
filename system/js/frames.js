@@ -2,8 +2,8 @@
 
 // ── Picture frames (FramesWS) ──────────────────────────────────────────
 // Frames are transparent overlays drawn ON TOP of the profile picture.
-// The list comes from the CUST project (?type=frames, sheet "FramesWS"),
-// and every frame's art lives at a predictable mediabaseWS path:
+// The list is the local FramesWS snapshot in /system/json/frames.json, and every
+// frame's art lives at a predictable mediabaseWS path:
 //
 //   frames/<id>/splash.png
 //
@@ -21,7 +21,7 @@
 //
 // The value saved in localStorage "pfpFrame" is the frame's full image URL
 // (or a data: URL for an uploaded frame; "" = no frame), so the header keeps
-// working even before the sheet has loaded. ws_frame_cache remembers the last
+// working even before the catalog has loaded. ws_frame_cache remembers the last
 // good list for an instant / offline library and for per-frame scale.
 (() => {
   const BASE      = "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/frames/";
@@ -60,15 +60,8 @@
   let _fetch = null;
   function load() {
     if (_fetch) return _fetch;
-    _fetch = (typeof ticketReady === "function" ? ticketReady() : Promise.resolve())
-      .then(() => fetch(bustCache(`${window.WS_ENDPOINTS.cust}?type=frames`), { cache: "no-store" }))
-      .then((r) => r.json())
+    _fetch = window.WS_LocalCatalogs.load("frames")
       .then((rows) => {
-        if (!Array.isArray(rows)) {
-          const err = new Error((rows && rows.error) || "Frame feed did not return a list.");
-          err.ticket = rows && rows.ticket;
-          throw err;
-        }
         const list = rows.map(parseRow).filter(Boolean);
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch (_) {}
         return list;

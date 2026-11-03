@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { keys: ["F"],               label: "Switch between favorites and unfavorited assets" },
     { keys: ["Enter"],           label: "Scroll to the top when the Top button is visible" },
     { keys: ["←", "→"],          label: "Previous / next page", joiner: " " },
-    { keys: ["0"],               label: "Reset to the Redux theme" },
+    { keys: ["0"],               label: "Reset to the Nexus theme" },
     { keys: ["1", "9"],          label: "Jump to one of your theme shortcuts", joiner: "–" },
     { keys: ["[", "]"],          label: "Cycle your gif packs (loading, searching, crash)", joiner: " " },
     { keys: ["+", "−"],          label: "Cycle your widgets", joiner: " " },

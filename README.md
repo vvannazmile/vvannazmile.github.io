@@ -1,4 +1,4 @@
-![WannaSmile Banner](https://raw.githubusercontent.com/wannasmile4evr/wannasmile4evr.github.io/main/assets/images/pages/release/wannasmile-updated-banner.png)
+![WannaSmile Banner](https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/assets/images/pages/release/wannasmile-updated-banner.png)
 
 <h1 align="center">Wanna Smile: Expansion Update</h1>
 
@@ -7,13 +7,13 @@
 </p>
 
 <p align="center">
-  <a href="https://wannasmile4evr.github.io/">
+  <a href="https://vvannazmile.github.io./">
     <img src="https://img.shields.io/badge/Website-Live-red?style=flat-square&logo=googlechrome&logoColor=white" alt="Live Website">
   </a>
   <img src="https://img.shields.io/badge/Version-2.1.3-red?style=flat-square&logo=github&logoColor=white" alt="Version 2.1.3">
-  <img src="https://img.shields.io/github/last-commit/wannasmile4evr/wannasmile4evr.github.io?style=flat-square&color=red&logo=git&logoColor=white" alt="Last Commit">
-  <img src="https://img.shields.io/github/repo-size/wannasmile4evr/wannasmile4evr.github.io?style=flat-square&color=red&logo=github&logoColor=white" alt="Repository Size">
-  <img src="https://img.shields.io/github/languages/top/wannasmile4evr/wannasmile4evr.github.io?style=flat-square&color=red" alt="Top Language">
+  <img src="https://img.shields.io/github/last-commit/vvannazmile/vvannazmile.github.io?style=flat-square&color=red&logo=git&logoColor=white" alt="Last Commit">
+  <img src="https://img.shields.io/github/repo-size/vvannazmile/vvannazmile.github.io?style=flat-square&color=red&logo=github&logoColor=white" alt="Repository Size">
+  <img src="https://img.shields.io/github/languages/top/vvannazmile/vvannazmile.github.io?style=flat-square&color=red" alt="Top Language">
   <a href="https://ankomstudios.com/fundme/">
     <img src="https://img.shields.io/badge/Support-Donate-red?style=flat-square&logo=githubsponsors&logoColor=white" alt="Support Development">
   </a>
@@ -73,15 +73,15 @@ WannaSmile is built with the following languages, tools, and platforms. Explore 
 These are the contributors to WannaSmile. Check out their profiles and drop them a follow!
 
 <p align="center">
-  <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=wannasmile4evr/wannasmile4evr.github.io" alt="WannaSmile4Evr Contributors">
+  <a href="https://github.com/vvannazmile/vvannazmile.github.io/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=vvannazmile/vvannazmile.github.io" alt="WannaSmile4Evr Contributors">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io/graphs/contributors">View All Contributors</a>
+  <a href="https://github.com/vvannazmile/vvannazmile.github.io/graphs/contributors">View All Contributors</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io/graphs/commit-activity">Commit Activity</a>
+  <a href="https://github.com/vvannazmile/vvannazmile.github.io/graphs/commit-activity">Commit Activity</a>
 </p>
 
 ## Getting Started
@@ -90,7 +90,7 @@ Visit the live website to explore the project:
 
  <p align="right">
 
-  <a href="https://wannasmile4evr.github.io/">
+  <a href="https://vvannazmile.github.io./">
     <strong>Open WannaSmile4Evr →</strong>
   </a>
 </p>
@@ -98,8 +98,8 @@ Visit the live website to explore the project:
 To explore or work on the source code, clone the repository:
 
 ```bash
-git clone https://github.com/wannasmile4evr/wannasmile4evr.github.io.git
-cd wannasmile4evr.github.io
+git clone https://github.com/vvannazmile/vvannazmile.github.io.git
+cd vvannazmile.github.io
 ```
 
 Open `index.html` in VS Code and use a local development server to test changes. Some features depend on external services and may require configured endpoints and access permissions.
@@ -136,9 +136,9 @@ WannaSmile4Evr is an evolving project. Features, pages, and integrations may cha
 </p>
 
 <p align="center">
-  <a href="https://github.com/wannasmile4evr">GitHub Profile</a>
+  <a href="https://github.com/vvannazmile">GitHub Profile</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/wannasmile4evr/wannasmile4evr.github.io">Source Code</a>
+  <a href="https://github.com/vvannazmile/vvannazmile.github.io">Source Code</a>
   &nbsp;·&nbsp;
-  <a href="https://wannasmile4evr.github.io/">Live Website</a>
+  <a href="https://vvannazmile.github.io./">Live Website</a>
 </p>

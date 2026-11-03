@@ -269,6 +269,7 @@ kbd {
   height: 108px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 10px;
   border: 2px dashed rgba(255,255,255,0.2);
   background:
@@ -426,7 +427,7 @@ kbd {
       <h2 id="themesTitle"><span class="emoji" aria-hidden="true">🎨</span>Themes</h2>
       <span class="picked" id="themesPicked"></span>
     </div>
-    <p class="tip">Pick up to 9 themes as shortcuts, then press <kbd>1</kbd>–<kbd>9</kbd> on the main site to jump straight to one (<kbd>0</kbd> / <kbd>R</kbd> always goes back to Redux). <b>Activate</b> makes a theme the one that loads next time on this device, and dresses this page in it right now.</p>
+    <p class="tip">Pick up to 9 themes as shortcuts, then press <kbd>1</kbd>–<kbd>9</kbd> on the main site to jump straight to one (<kbd>0</kbd> resets to Nexus). <b>Activate</b> makes a theme the one that loads next time on this device, and dresses this page in it right now.</p>
     <div class="grid" id="themeGrid"></div>
   </section>
 
@@ -485,8 +486,7 @@ kbd {
 <script>
 "use strict";
 // ── Store ──────────────────────────────────────────────────────────────
-// Widgets, themes and gif packs, each fetched fresh from the Apps Script
-// backend (bustCache/ticketReady from utils.js add the access ticket).
+// Store catalogs are built from the checked-in JSON snapshots in /system/json.
 // What gets picked here is read by the main site:
 //   ws_selected_widgets   widget ids, pick order          -> widgets.js
 //   ws_selected_themes    up to 9 theme ids (keys 1–9)    -> ui.js
@@ -500,9 +500,6 @@ kbd {
 //   ws_cursors_enabled    custom cursors on ("true")      -> cursors.js
 //   ws_active_cursor      the active cursor pack          -> cursors.js
 (() => {
-  // Widgets, themes and gif packs all come from the CUST project (endpoints.js).
-  const CUST_URL = window.WS_ENDPOINTS.cust;
-
   const WIDGET_SEL_KEY  = "ws_selected_widgets";
   const THEME_SEL_KEY   = "ws_selected_themes";
   const THEME_ACTIVE    = "selectedTheme";
@@ -513,6 +510,7 @@ kbd {
   const WRAPPER_KEY     = "pfpWrapper";
   const THEME_MAX       = 9;
   const DEFAULT_ID      = "redux";
+  const DEFAULT_THEME_ID = "nexus";
 
   // ThemifyWS columns: name | id | type | header-bg | quote-bg | main-bg | footer-bg | … | accent-color (11)
   const COL = { name: 0, id: 1, type: 2, header: 3, main: 5, footer: 6, accent: 11 };
@@ -523,27 +521,8 @@ kbd {
   const writeList = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const toast = (msg) => window.showToast?.(msg, 2400);
 
-  // ── Ticket: the ticket screens live on the main page; this one has none.
-  const hasTicket = !window.WS_Ticket || window.WS_Ticket.approved();
-  if (!hasTicket) {
-    const note = document.createElement("p");
-    note.className = "notice";
-    note.innerHTML = `🎟️ You need an access ticket first. Get yours on the <a href="../../../index.html">main WannaSmile page</a>, then come back here.`;
-    document.querySelector(".tabs").before(note);
-  }
-
   async function getJSON(type) {
-    if (!hasTicket) throw new Error("No approved access ticket yet.");
-    await ticketReady();
-    const res = await fetch(bustCache(`${CUST_URL}?type=${type}`), { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (!Array.isArray(json)) {
-      const err = new Error(json?.error || "Feed did not return a list.");
-      err.ticket = json?.ticket;   // "unknown" / "missing" when the ticket was refused
-      throw err;
-    }
-    return json;
+    return window.WS_LocalCatalogs.load(type);
   }
 
   function skeletons(grid, n = 4) {
@@ -677,7 +656,7 @@ kbd {
 
   function paintThemes() {
     const sel = readList(THEME_SEL_KEY);
-    const active = (localStorage.getItem(THEME_ACTIVE) || DEFAULT_ID).trim().toLowerCase();
+    const active = (localStorage.getItem(THEME_ACTIVE) || DEFAULT_THEME_ID).trim().toLowerCase();
     themeCards.forEach(({ id, card, tag, slot, pickBtn, activeBtn }) => {
       const at = sel.indexOf(id);
       const isActive = active === id;
@@ -693,7 +672,11 @@ kbd {
   function renderThemes(rows) {
     const grid = $("themeGrid");
     grid.removeAttribute("aria-busy");
-    const eligible = rows.filter((r) =>
+    const builtinRows = window.WS_BUILTIN_THEME_ROWS || [];
+    const jsonIds = new Set(rows.map((row) => String(row[COL.id] || "").trim().toLowerCase()));
+    const allRows = [...rows, ...builtinRows.filter((row) =>
+      !jsonIds.has(String(row[COL.id] || "").trim().toLowerCase()))];
+    const eligible = allRows.filter((r) =>
       String(r[COL.id] || "").trim() && String(r[COL.type] || "").trim().toLowerCase() !== "soon");
     if (!eligible.length) return message(grid, "No themes available right now. Check back soon!");
     grid.replaceChildren();
@@ -746,7 +729,12 @@ kbd {
       activeBtn.addEventListener("click", () => {
         cacheThemeRow(id, row);
         if (window.ThemifySheets) window.ThemifySheets.applyTheme(id);   // saves selectedTheme + re-skins this page
-        else { try { localStorage.setItem(THEME_ACTIVE, id); } catch {} }
+        else {
+          try {
+            localStorage.setItem(THEME_ACTIVE, id);
+            localStorage.setItem("ws_theme_explicit", "1");
+          } catch {}
+        }
         paintThemes();
         toast(`🎨 ${name} is now your theme`);
       });
@@ -1120,10 +1108,16 @@ kbd {
     skeletons(grid);
     getJSON(type).then(render).catch((err) => {
       console.error(`[Store] Failed to load ${what}:`, err);
-      const why = !hasTicket ? `${what[0].toUpperCase() + what.slice(1)} show up once you have an access ticket.`
-        : err.ticket ? `The store didn't accept your access ticket (${err.ticket}), so ${what} can't load. Open the main page to re-check it, then refresh.`
-        : `Couldn't load ${what} right now (${err.message}). Try refreshing.`;
-      message(grid, why, hasTicket);
+      const why = `Couldn't load the local ${what} catalog (${err.message}). Try refreshing.`;
+      if (type === "themes" && window.WS_BUILTIN_THEME_ROWS?.length) {
+        renderThemes(window.WS_BUILTIN_THEME_ROWS);
+        const note = document.createElement("p");
+        note.className = "empty error";
+        note.textContent = why;
+        grid.append(note);
+        return;
+      }
+      message(grid, why, true);
     });
   }
   load("widgets",  "widgetGrid",  renderWidgets,  "widgets");
@@ -1133,22 +1127,18 @@ kbd {
     // Frames go through frames.js (parses rows, caches the list for the profile modal).
     const grid = $("frameGrid");
     skeletons(grid);
-    (hasTicket ? window.WSFrames.load() : Promise.reject(new Error("No approved access ticket yet."))).then(renderFrames).catch((err) => {
+    window.WSFrames.load().then(renderFrames).catch((err) => {
       console.error("[Store] Failed to load frames:", err);
-      message(grid, !hasTicket ? "Frames show up once you have an access ticket."
-        : err.ticket ? `The store didn't accept your access ticket (${err.ticket}), so frames can't load. Open the main page to re-check it, then refresh.`
-        : `Couldn't load frames right now (${err.message}). Try refreshing.`, hasTicket);
+      message(grid, `Couldn't load the local frames catalog (${err.message}). Try refreshing.`, true);
     });
   }
   {
     // Wrappers go through wrappers.js (parses rows, caches the list for the profile modal).
     const grid = $("wrapperGrid");
     skeletons(grid);
-    (hasTicket ? window.WSWrappers.load() : Promise.reject(new Error("No approved access ticket yet."))).then(renderWrappers).catch((err) => {
+    window.WSWrappers.load().then(renderWrappers).catch((err) => {
       console.error("[Store] Failed to load wrappers:", err);
-      message(grid, !hasTicket ? "Wrappers show up once you have an access ticket."
-        : err.ticket ? `The store didn't accept your access ticket (${err.ticket}), so wrappers can't load. Open the main page to re-check it, then refresh.`
-        : `Couldn't load wrappers right now (${err.message}). Try refreshing.`, hasTicket);
+      message(grid, `Couldn't load the local wrappers catalog (${err.message}). Try refreshing.`, true);
     });
   }
   renderCursors();

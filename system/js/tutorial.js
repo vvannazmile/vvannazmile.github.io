@@ -1308,7 +1308,7 @@
     { sel: [".nav-links a[href*='padlet']"], title: "Suggestions",
       html: "<p>Opens our Padlet board in a new tab. Suggest an addition, ask for a feature, or tell us when something's broken.</p>" },
     { sel: [".pages-anchor a[href*='pages/store/']"], title: "Store",
-      html: "<p>Opens the <b>Store</b> in a new tab, where you pick:</p><p>• <b>Widgets</b> for the floating bubble (<kbd>+</kbd> <kbd>−</kbd> switch between them)<br>• <b>Themes</b>, with up to 9 on the number keys <kbd>1</kbd>–<kbd>9</kbd> (<kbd>0</kbd> goes back to Redux)<br>• <b>Gif packs</b> for the loading animations (<kbd>[</kbd> <kbd>]</kbd> cycle them)</p>" },
+      html: "<p>Opens the <b>Store</b> in a new tab, where you pick:</p><p>• <b>Widgets</b> for the floating bubble (<kbd>+</kbd> <kbd>−</kbd> switch between them)<br>• <b>Themes</b>, with up to 9 on the number keys <kbd>1</kbd>–<kbd>9</kbd> (<kbd>0</kbd> resets to Nexus)<br>• <b>Gif packs</b> for the loading animations (<kbd>[</kbd> <kbd>]</kbd> cycle them)</p>" },
     { sel: [".pages-anchor a[title='Coming soon']"], title: "NEWS",
       html: "<p><b>Coming soon:</b> announcements and what's new on the site.</p>" },
     { sel: ["#openDailyPicks"], title: "Daily picks",

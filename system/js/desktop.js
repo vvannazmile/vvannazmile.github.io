@@ -46,7 +46,7 @@
   document.documentElement.appendChild(css);
 
   const nativeOpen = window.open.bind(window);
-  const SITE_HOSTS = [location.hostname.toLowerCase(), "wannasmile4evr.github.io"];
+  const SITE_HOSTS = [location.hostname.toLowerCase(), "vvannazmile.github.io", "vvannazmile.github.io.", "wannasmile4evr.github.io"];
 
   // ── Classify a URL ────────────────────────────────────────────────────
   function classify(raw) {
