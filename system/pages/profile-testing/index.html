@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Profile testing</title>
+<script src="../../js/endpoints.js"></script>
+<script src="../../js/utils.js"></script>
+<script src="../../js/themify.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" />
+<script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/shoelace-autoloader.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
+<style>
+:root{--accent:var(--accent-color,#f44);--fg:var(--url-color,#fff);--panel:var(--aside-bg,rgba(0,0,0,.92));--line:rgba(255,255,255,.2);--url:var(--url-color,#fff);color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{min-height:100%;background:var(--main-bg,#1d1f21) center/cover no-repeat fixed}
+body{margin:0;min-height:100vh;color:var(--fg);font:14px/1.4 monospace;display:grid;place-items:center;padding:24px;background:radial-gradient(circle,rgba(255,255,255,.10) 1.5px,transparent 2px) 0 0/22px 22px,rgba(0,0,0,.45);backdrop-filter:blur(6px)}
+#profileEditor{width:min(100%,1560px);height:min(900px,calc(100vh - 48px));min-height:560px;display:grid;grid-template-columns:minmax(280px,340px) minmax(320px,1fr) minmax(300px,340px);grid-template-areas:"style preview media";align-items:stretch;border:2px solid var(--accent);border-radius:18px;background:var(--panel);box-shadow:0 24px 70px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.07);overflow:hidden}
+#profileEditor[data-profile-align="left"],#profileEditor[data-profile-align="right"]{width:min(100%,1760px);grid-template-columns:minmax(240px,260px) minmax(560px,1fr) minmax(240px,260px)}
+aside{min-width:0;max-height:none;overflow:auto;padding:22px 18px 24px;background:transparent;scrollbar-width:thin}
+aside:not(.right){grid-area:style}
+aside.right{grid-area:media;border-left:1px solid var(--line)}
+h1{display:inline-block;margin:0 0 10px;padding:5px 11px;border:0;border-radius:7px;background:radial-gradient(circle,rgba(255,255,255,.1) 1px,transparent 1.5px) 0 0/12px 12px,rgba(0,0,0,.58);backdrop-filter:blur(6px);box-shadow:0 5px 14px rgba(0,0,0,.28);font-size:18px;color:var(--url);text-shadow:2px 2px 0 var(--accent);transform:rotate(-2deg)}
+h2{display:inline-block;margin:18px 0 8px;padding:2px 10px 4px;border-radius:9px 12px 8px 11px;background:rgba(0,0,0,.55);font-size:14px;color:var(--url);text-shadow:2px 2px 0 var(--accent);transform:rotate(-2deg);box-shadow:3px 3px 0 rgba(0,0,0,.45)}
+p.note,.tiny{margin:0 0 8px;color:#aaa;font-size:12px}
+label{display:flex;align-items:center;gap:8px;margin:8px 0;justify-content:space-between;color:var(--url,#fff)!important}
+label>span{flex:0 0 108px;color:var(--url,#fff)!important}
+input[type=range]{
+  --range-progress:0%;
+  appearance:none;
+  -webkit-appearance:none;
+  flex:1;
+  min-width:0;
+  height:24px;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  outline:none;
+  background:transparent;
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:6px;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;
+  background:linear-gradient(to right,var(--accent) 0 var(--range-progress),rgba(255,255,255,.16) var(--range-progress) 100%);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
+}
+input[type=range]::-moz-range-track{
+  height:6px;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;
+  background:linear-gradient(to right,var(--accent) 0 var(--range-progress),rgba(255,255,255,.16) var(--range-progress) 100%);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
+}
+input[type=range]::-webkit-slider-thumb{
+  appearance:none;
+  -webkit-appearance:none;
+  width:18px;
+  height:18px;
+  margin-top:-7px;
+  border:3px solid #fff;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.45);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+input[type=range]::-moz-range-thumb{
+  width:14px;
+  height:14px;
+  border:3px solid #fff;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.45);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.12);box-shadow:0 0 0 3px rgba(0,0,0,.55),0 0 0 5px color-mix(in srgb,var(--accent) 36%,transparent)}
+input[type=range]:hover::-moz-range-thumb{transform:scale(1.12);box-shadow:0 0 0 3px rgba(0,0,0,.55),0 0 0 5px color-mix(in srgb,var(--accent) 36%,transparent)}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(0,0,0,.55),0 0 0 6px var(--accent)}
+input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(0,0,0,.55),0 0 0 6px var(--accent)}
+input[type=range]:disabled{opacity:.45;cursor:not-allowed}
+input[type=range]+output{flex:0 0 42px;text-align:right;color:var(--url,#fff);font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+input[type=color]{width:44px;height:28px;padding:0;border:2px solid var(--line);background:none;border-radius:6px}
+select,input[type=text],textarea,button{background:rgba(0,0,0,.55);color:var(--url,#fff)!important;border:2px solid var(--line);padding:6px 8px;font:inherit;border-radius:8px;outline:none}
+select option{background:#181a1c;color:#f4f4f5}
+select,input[type=text]{flex:1;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{border-color:var(--accent)}
+button{cursor:pointer;transition:transform .15s cubic-bezier(.3,1.6,.5,1),border-color .15s}
+button:hover{border-color:var(--accent);transform:translateY(-1px)}
+.row,.media-strip,.crop-panel{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}.mini{padding:3px 8px;font-size:12px}
+main{grid-area:preview;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:0;min-height:0;overflow-y:auto;padding:24px;background:rgba(0,0,0,.16)}
+#previewShell{display:grid;flex:0 0 auto;grid-template-columns:minmax(0,1fr);row-gap:24px;width:min(560px,100%);margin-block:auto}
+#profileTopToolbar{position:relative;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:5px;margin:0;padding:4px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.92)}
+#avatarAlignModes{display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
+#profileTopToolbar button,#avatarAlignModes button{min-width:0;padding:6px 9px;border-color:transparent;background:transparent;color:var(--url,#fff);font-size:11px;white-space:nowrap}
+#profileTopToolbar .profile-toolbar-action{background:rgba(255,255,255,.07)}
+#profileTopToolbar #saveProfileButton{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 18%,rgba(0,0,0,.7))}
+#avatarAlignModes button[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 56%,transparent);background:color-mix(in srgb,var(--accent) 18%,rgba(0,0,0,.74));color:#fff}
+#profileTopToolbar button:hover,#avatarAlignModes button[aria-pressed="true"]:hover{transform:none}
+#profileTopToolbar button:disabled,#profileBottomToolbar button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+#profileBottomToolbar{position:relative;z-index:5;isolation:isolate;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 8px 20px rgba(0,0,0,.32)}
+#profileBottomToolbar button{min-height:36px;padding:6px 8px;font-size:11px;font-weight:650}
+#profileBottomToolbar #saveMainProfileButton{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 16%,rgba(0,0,0,.72))}
+#profileEditor[data-profile-align="left"] main,#profileEditor[data-profile-align="right"] main{padding:18px 14px}
+#profileEditor[data-profile-align="left"] #previewShell,#profileEditor[data-profile-align="right"] #previewShell{width:min(760px,100%)}
+#profileEditor[data-profile-mode="view"] aside{opacity:.72}
+#profileBio{min-height:1.5em;margin:0;color:#f2f3f5;font:13px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+#profileBio:empty::before{color:#b4b6bb;content:"Add a short bio..."}
+#profileEditor[data-profile-mode="view"] #profileBio:empty::before{content:"No bio yet."}
+#profileBio[contenteditable="plaintext-only"]:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+aside>h2{display:block;width:100%;margin:22px 0 10px;padding:0 0 7px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;color:var(--url,#fff);font-size:13px;font-weight:700;letter-spacing:.04em;text-shadow:none;transform:none;box-shadow:none}
+aside>h2:first-of-type{margin-top:20px}
+.panel-intro{margin:0 0 14px;color:var(--url,#fff);font-size:13px;line-height:1.55}
+.section-note{margin:-3px 0 10px;color:var(--url,#fff);font-size:12px;line-height:1.45;opacity:.78}
+aside>label{min-height:34px}
+aside>label>span{flex-basis:108px}
+.field-group{padding:0 0 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.picker{margin:4px 0 10px}.picker input[type=text]{width:100%;margin-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:200px;overflow:auto;padding:5px;border:2px solid var(--line);border-radius:10px;background:rgba(0,0,0,.35);scrollbar-width:thin}
+.tile{position:relative;aspect-ratio:1;padding:0;overflow:hidden;border-radius:8px;background:#111}
+.tile img{display:block;width:100%;height:100%;object-fit:cover}.tile.contain img{object-fit:contain}
+.tile.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.tile b{position:absolute;left:0;right:0;bottom:0;padding:1px 3px;background:rgba(0,0,0,.78);font-size:10px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.none{display:grid;place-items:center;font-size:11px}
+@media(max-width:1180px){
+  body{padding:18px}
+  #profileEditor{width:min(100%,900px);height:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"style style" "preview preview" "media media";overflow:visible}
+  #profileEditor[data-profile-align="left"],#profileEditor[data-profile-align="right"]{width:min(100%,900px);grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  main{min-height:480px}
+  aside{max-height:70vh}
+  aside.right{border-left:0;border-top:1px solid var(--line)}
+}
+@media(max-width:720px){
+  body{padding:12px;place-items:start center}
+  #profileEditor{grid-template-columns:minmax(0,1fr);grid-template-areas:"style" "preview" "media";height:auto;border-radius:14px}
+  #profileEditor[data-profile-align="left"],#profileEditor[data-profile-align="right"]{grid-template-columns:minmax(0,1fr)}
+  main{min-height:0;padding:18px}
+  aside{max-height:none;padding:18px 16px}
+  aside.right{border-top:1px solid var(--line)}
+}
+/* User profile preview */
+#card{position:relative;flex:0 0 auto;width:min(560px,100%);overflow:hidden;background:#383a40;--bw:1px;--bc1:#383a40;--bc2:#383a40;--ba:135deg;--r:12px;--avatar-size:116px;color:#f2f3f5;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+ border:var(--bw) solid transparent;border-radius:var(--r);
+ background:linear-gradient(#383a40,#383a40) padding-box,linear-gradient(var(--ba),var(--bc1),var(--bc2)) border-box}
+#card button{font:inherit;color:inherit}
+#card[data-avatar-align="left"],#card[data-avatar-align="right"]{width:min(760px,100%)}
+#card[data-avatar-align="left"] #profileActions,#card[data-avatar-align="right"] #profileActions{position:absolute;top:0;right:0;left:0;z-index:5;height:0;padding:0}
+#card[data-avatar-align="left"] #profileActions .profile-action,#card[data-avatar-align="right"] #profileActions .profile-action{top:12px}
+#card[data-avatar-align="left"] #avatar,#card[data-avatar-align="right"] #avatar{top:calc(var(--profile-banner-height) + 16px);z-index:4}
+#card[data-avatar-align="left"] #body,#card[data-avatar-align="right"] #body{display:grid;column-gap:14px;padding:16px 24px 20px;background:transparent}
+#card[data-avatar-align="left"] #body{grid-template-columns:var(--avatar-size) minmax(0,1fr)}
+#card[data-avatar-align="right"] #body{grid-template-columns:minmax(0,1fr) var(--avatar-size)}
+#card[data-avatar-align="left"] .profile-identity{grid-column:2}
+#card[data-avatar-align="right"] .profile-identity{grid-column:1}
+#card[data-avatar-align="left"] .profile-identity,#card[data-avatar-align="right"] .profile-identity{display:flex;min-width:0;min-height:var(--avatar-size);flex-direction:column;justify-content:center}
+#card[data-avatar-align="left"] .profile-name-row,#card[data-avatar-align="left"] .profile-awards{justify-content:flex-start;text-align:left}
+#card[data-avatar-align="right"] .profile-name-row,#card[data-avatar-align="right"] .profile-awards{justify-content:flex-end;text-align:right}
+#card[data-avatar-align="left"] #badges{justify-content:flex-start}
+#card[data-avatar-align="right"] #badges{justify-content:flex-end}
+#card[data-avatar-align="left"] #profileTabs,#card[data-avatar-align="right"] #profileTabs{grid-column:1/-1;margin:18px 0 0;padding:0 4px}
+#card[data-avatar-align="left"] .profile-panel,#card[data-avatar-align="right"] .profile-panel{grid-column:1/-1;min-width:0}
+#wrapper{position:absolute;top:var(--profile-banner-height,210px);right:0;bottom:0;left:0;overflow:hidden;pointer-events:none;background-position:center;background-repeat:no-repeat;opacity:1;z-index:0}
+#bannerMaskExtension{position:absolute;top:100%;right:0;left:0;z-index:1;background-repeat:no-repeat;pointer-events:none}
+#banner{position:relative;height:210px;z-index:1;background:radial-gradient(circle,rgba(255,255,255,.18) 1.5px,transparent 2px) 0 0/18px 18px,linear-gradient(120deg,#6e6861,#26282d) center/cover}
+#bannerTintLayer{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.16}
+#profileMore{position:absolute;z-index:20;top:12px;right:12px}
+#profileMoreButton{width:38px;height:38px;padding:0;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12);border-radius:50%;background:rgba(24,25,28,.5);color:#fff;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+#profileMoreButton:hover,#profileMoreButton[aria-expanded="true"]{background:#24252a;border-color:rgba(255,255,255,.3)}
+#profileMoreButton svg{width:19px;height:19px;fill:currentColor}
+#profileMoreMenu{position:absolute;top:46px;right:0;width:min(205px,calc(100vw - 72px));padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(37,38,44,.5);box-shadow:0 14px 34px rgba(0,0,0,.42);color:#e5e6e8}
+#profileMoreMenu[hidden]{display:none}
+.profile-menu-item{display:flex;width:100%;min-height:36px;flex-direction:column;justify-content:center;align-items:flex-start;gap:1px;padding:7px 10px;border:0;border-radius:5px;background:transparent;text-align:left;font-size:13px;font-weight:650;cursor:pointer}
+.profile-menu-item:hover,.profile-menu-item:focus-visible{background:rgba(255,255,255,.09);transform:none}
+.profile-menu-item.danger{color:#f18a8d}
+.profile-menu-separator{height:1px;margin:5px 4px;background:rgba(255,255,255,.1)}
+#divider{position:absolute;left:0;right:0;pointer-events:none}
+#blendMark{position:absolute;left:0;right:0;z-index:2;display:none;pointer-events:none;background-repeat:no-repeat;background-blend-mode:screen;mix-blend-mode:screen;opacity:.88;mask-image:linear-gradient(to right,transparent,black 7%,black 93%,transparent)}
+#profileActions{position:relative;z-index:3;display:flex;align-items:center;justify-content:flex-end;gap:8px;height:48px;padding:8px 16px}
+#avatar{position:absolute;left:16px;top:-72px;width:var(--avatar-size);height:var(--avatar-size);border-radius:50%;border:4px solid #383a40;background:#292a2f center/cover;display:grid;place-items:center;font-size:44px;z-index:3}
+#profileActions .profile-action{position:absolute;top:calc(-1 * var(--profile-banner-height,210px) + 12px);z-index:6}
+#messageUser{left:16px}
+#addFriend{left:62px}
+#avatarFrame{position:absolute;z-index:5;left:50%;top:50%;display:none;background-position:center;background-repeat:no-repeat;background-size:contain;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+#avatarFrame.visible{display:block}
+#avatarStatus{position:absolute;z-index:7;width:24px;height:24px;border:4px solid #383a40;border-radius:50%;background:#3ba875}
+#avatarStatus[data-status="green"]{background:#3ba875}
+#avatarStatus[data-status="red"]{background:#ed4245}
+#avatarStatus[data-status="yellow"]{background:#f0b232}
+#avatarStatus[data-status="grey"]{background:#747f8d}
+#avatarStatus[data-status="moon"]{background:#5865f2}
+#avatarStatus[data-status="moon"]::before,#avatarStatus[data-status="moon"]::after{position:absolute;width:10px;height:10px;border-radius:50%;content:""}
+#avatarStatus[data-status="moon"]::before{top:2px;left:3px;background:#fff}
+#avatarStatus[data-status="moon"]::after{top:0;left:7px;background:#5865f2}
+.profile-action{min-height:34px;padding:6px 12px;border:1px solid rgba(255,255,255,.12)!important;border-radius:7px;background:rgba(75,77,85,.5)!important;color:#f2f3f5!important;font-size:13px!important;font-weight:650!important;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.profile-action:hover{background:rgba(91,94,103,.7)!important;border-color:rgba(255,255,255,.28)!important}
+.profile-action.message{width:38px;padding:0;display:grid;place-items:center}
+.profile-action.message svg{width:17px;height:17px;fill:currentColor}
+.profile-action.add-friend{display:inline-flex;align-items:center;gap:6px}
+.profile-action.add-friend svg{width:14px;height:14px;fill:currentColor}
+#body{position:relative;z-index:3;padding: max(4px,calc(var(--avatar-size) - 112px)) 16px 20px;text-align:left;background:transparent}
+.profile-name-row{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;flex-wrap:wrap;text-align:center}
+#name{min-width:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:#f2f3f5;font:700 clamp(19px,3.5vw,23px)/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;word-break:break-word}
+#body[data-avatar-align="left"] .profile-name-row{justify-content:flex-start;text-align:left}
+#body[data-avatar-align="right"] .profile-name-row{justify-content:flex-end;text-align:right}
+.profile-awards{display:flex;justify-content:center;min-height:22px;margin-top:5px}
+#badges{display:inline-flex;justify-content:center;gap:5px;align-items:center;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;background:#27282d;border:1px solid rgba(255,255,255,.2);border-radius:6px;overflow:hidden}
+.badge img{display:block;width:100%;height:100%;object-fit:cover;background:#111}
+#profileTabs{display:flex;gap:clamp(16px,5vw,48px);margin:24px -16px 0;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto;scrollbar-width:thin}
+.profile-tab{position:relative;flex:none;min-height:38px;padding:0 0 9px;border:0!important;border-radius:0!important;background:transparent!important;color:#e2e3e5!important;font-size:13px!important;font-weight:500!important;white-space:nowrap}
+.profile-tab:hover{color:#fff!important;transform:none!important}
+.profile-tab[aria-selected="true"]{font-weight:700!important}
+.profile-tab[aria-selected="true"]::after{position:absolute;right:0;bottom:-1px;left:0;height:2px;border-radius:2px;background:#f2f3f5;content:""}
+.profile-panel{padding-top:14px}
+.profile-panel[hidden]{display:none}
+.profile-section-title{margin:14px 0 7px;color:#e4e5e7;font-size:12px;font-weight:750}
+.profile-role-list{display:flex;flex-wrap:wrap;gap:6px}
+.profile-role{display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:3px 9px;border:1px solid rgba(255,255,255,.12);border-radius:7px;background:rgba(20,22,27,.56);color:#e1e2e4;font-size:12px}
+.profile-role::before{width:8px;height:8px;flex:none;border-radius:50%;background:#8c9ca7;content:""}
+.profile-role::after{content:"×";color:#aeb3ba;font-size:14px;line-height:1}
+.profile-role:hover{border-color:rgba(255,255,255,.3);background:rgba(35,38,45,.8);transform:translateY(-1px)}
+.profile-role-add{display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px dashed rgba(255,255,255,.38);border-radius:7px;background:rgba(20,22,27,.35);color:#e4e6e9;font-size:18px;line-height:1}
+.profile-role-add[aria-expanded="true"]{border-style:solid;border-color:var(--accent);color:#fff}
+.profile-role-composer{display:flex;gap:6px;margin-top:8px}
+.profile-role-composer input{min-width:0;flex:1}
+.profile-role-composer button{font-size:12px}
+#roleComposer[hidden]{display:none}
+.profile-created{margin-top:16px;color:#e1e2e4;font-size:12px}
+.profile-created strong{display:block;margin-bottom:4px;color:#e4e5e7;font-size:12px}
+.profile-created time{white-space:nowrap}
+.profile-empty{padding:18px 4px;color:#c6c8cc}
+.profile-friends{display:grid;gap:2px}
+.profile-friend{display:flex;align-items:center;gap:11px;min-height:58px;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(0,0,0,.3)}
+.profile-friend:last-child{border-bottom:0}
+.profile-friend-avatar{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:2px solid #383a40;border-radius:50%;background:#51545e;color:#fff;font-size:13px;font-weight:750}
+.profile-friend-name{color:#f2f3f5;font-size:13px;font-weight:650}
+.profile-friend-note{display:block;color:#b9bbc1;font-size:11px}
+body>.sl-toast-stack{position:fixed;top:16px;right:16px;z-index:20000;padding:0}
+.profile-alert::part(base){border:1px solid color-mix(in srgb,var(--accent) 56%,rgba(255,255,255,.18));border-radius:12px;background:var(--panel);color:var(--fg);box-shadow:0 12px 32px rgba(0,0,0,.48);font-family:monospace}
+.profile-alert::part(icon){color:var(--accent)}
+.profile-alert::part(message){font-size:13px;line-height:1.45}
+.profile-alert::part(close-button){color:var(--fg)}
+.profile-alert-fallback{position:fixed;top:16px;right:16px;z-index:20000;max-width:min(360px,calc(100vw - 32px));padding:12px 16px;border:1px solid var(--accent);border-radius:12px;background:var(--panel);color:var(--fg);box-shadow:0 12px 32px rgba(0,0,0,.48);font:13px/1.45 monospace}
+#quote{position:absolute;z-index:8;cursor:grab;padding:9px 13px;background:#0b0d12;border:1px solid color-mix(in srgb,var(--accent) 40%,rgba(255,255,255,.18));border-radius:17px 17px 17px 7px;box-shadow:0 9px 24px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.12);max-width:180px;touch-action:none;user-select:none;transform:none;line-height:1.25;overflow-wrap:anywhere}
+#quote:before{content:"";position:absolute;left:15px;bottom:-6px;width:12px;height:12px;background:#0b0d12;border-right:1px solid color-mix(in srgb,var(--accent) 40%,rgba(255,255,255,.18));border-bottom:1px solid color-mix(in srgb,var(--accent) 40%,rgba(255,255,255,.18));transform:rotate(45deg)}
+#quote:active{cursor:grabbing}
+#wrapperColorControl[hidden],#wrapperImageControls[hidden]{display:none}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+@media(max-width:520px){
+ #profileTopToolbar{justify-content:center;flex-wrap:wrap}
+ #profileTopToolbar button,#avatarAlignModes button{padding:6px 7px;font-size:10px}
+ #profileBottomToolbar{gap:5px}
+ #profileBottomToolbar button{padding:6px 4px;font-size:10px}
+ main{padding:18px 12px}
+ #banner{height:min(210px,42vw)}
+ #profileActions{height:48px;padding:8px 10px}
+ #messageUser{left:10px}
+ #addFriend{left:56px}
+ #avatar{left:10px;top:-70px}
+ #body{padding:max(4px,calc(var(--avatar-size) - 112px)) 12px 16px}
+ #profileTabs{margin-right:-12px;margin-left:-12px;padding-right:12px;padding-left:12px}
+ .profile-tab{font-size:12px!important}
+ #card[data-avatar-align="left"] #body,#card[data-avatar-align="right"] #body{padding-right:16px;padding-left:16px;grid-template-columns:var(--avatar-size) minmax(0,1fr)}
+ #card[data-avatar-align="right"] #body{grid-template-columns:minmax(0,1fr) var(--avatar-size)}
+}
+.achievement-choice{width:42px;height:42px;border-radius:50%;padding:0;background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.18);display:grid;place-items:center;overflow:hidden;transition:.15s ease}
+.achievement-choice:hover{border-color:var(--accent);transform:translateY(-1px)}
+.achievement-choice img{display:block;width:100%;height:100%;object-fit:cover;opacity:0}
+.achievement-choice.selected img{opacity:1}
+.achievement-choice.selected{background:rgba(255,68,68,.15);border-style:solid;border-color:var(--accent)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#cropModal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9999;padding:24px}
+#cropModal.visible{display:flex}
+#cropBox{width:min(760px,90vw);max-height:80vh;background:#111;border:2px solid var(--accent);border-radius:12px;padding:12px;box-shadow:0 12px 42px rgba(0,0,0,.45)}
+#cropCanvasWrap{width:100%;max-height:60vh;overflow:hidden;border:1px solid var(--line);background:#000;border-radius:8px}
+#cropImage{display:block;max-width:100%;max-height:60vh}
+.crop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="profileEditor">
+<aside>
+ <h1>Profile editor</h1>
+ <p class="panel-intro">Adjust the card’s layout, colors, identity, and effects. Changes stay in this browser and don’t affect the live profile.</p>
+
+ <h2>Banner divider</h2>
+ <label><span>Style</span><select id="divStyle"><option value="line">Line</option><option value="blend">Image blend mark</option><option value="none">Hidden</option><option value="jagged">Jagged</option><option value="drip">Dripping paint</option><option value="xmaslights">Christmas lights</option><option value="wave">Wave</option></select></label>
+ <label id="divFillControl"><span>Fill</span><select id="divFill"><option value="color">Solid colour</option><option value="mask">Banner mask</option></select></label>
+ <label id="divColorControl"><span>Colour</span><input type="color" id="divColor"></label>
+ <label><span id="divSizeLabel">Thickness</span><input type="range" id="divSize" min="1" max="40"></label>
+ <p class="section-note">Choose a colour or continue the banner image through a divider mask into the wrapper.</p>
+
+ <h2>Card border</h2>
+ <label><span>Size</span><input type="range" id="bw" min="0" max="16"></label>
+ <label><span>Colour A</span><input type="color" id="bc1"></label>
+ <label><span>Colour B</span><input type="color" id="bc2"></label>
+ <label><span>Direction</span><input type="range" id="ba" min="0" max="360"></label>
+
+ <h2>Banner size &amp; card corners</h2>
+ <label><span>Banner height</span><input type="range" id="bh" min="90" max="420"></label>
+ <label><span>Corners</span><input type="range" id="r" min="0" max="48"></label>
+
+ <h2>Achievements</h2>
+ <p class="section-note">Choose up to five earned badges to show on the card. Turn on preview to test unearned ones.</p>
+ <div id="achList"></div>
+ <label><span>Preview all</span><input type="checkbox" id="achDemo"></label>
+
+ <h2>Status bubble</h2>
+ <p class="section-note">Edit the thought bubble, then drag it directly on the preview to reposition it.</p>
+ <label><span>Text</span><input type="text" id="qText" maxlength="80"></label>
+ <label><span>Size</span><input type="range" id="qSize" min="10" max="36"></label>
+ <label><span>Colour</span><input type="color" id="qColor"></label>
+ <button id="qReset">Reset position</button>
+
+ <h2>Particles</h2>
+ <label><span>Effect</span><select id="fx_t"><option value="none">None</option><option value="snow">Snow</option><option value="rain">Rain</option><option value="embers">Embers</option><option value="stars">Stars</option></select></label>
+ <label><span>Amount</span><input type="range" id="fx_n" min="10" max="150"></label>
+
+ <h2>Display name</h2>
+ <label><span>Name</span><input type="text" id="nm" maxlength="24"></label>
+ <label><span>Font</span><select id="nf"><option value="ui-monospace,Menlo,Consolas,monospace">Monospace</option><option value="Georgia,serif">Serif</option><option value="'Comic Sans MS','Comic Neue',cursive">Comic</option><option value="Impact,Haettenschweiler,sans-serif">Impact</option><option value="'Brush Script MT',cursive">Script</option><option value="system-ui,sans-serif">Sans</option></select></label>
+ <label><span>Size</span><input type="range" id="ns" min="14" max="56"></label>
+ <label><span>Colour</span><input type="color" id="nc"></label>
+ <label><span>Outline</span><input type="range" id="no" min="0" max="8"></label>
+ <label><span>Bold / italic</span><span class="row" style="flex:1"><label style="margin:0"><input type="checkbox" id="nb"> B</label><label style="margin:0"><input type="checkbox" id="ni"> I</label></span></label>
+
+ <h2>Share or reset</h2>
+ <p class="note">Others can't see profiles until the backend stores them. Until then: copy a share code and send it; they paste it here.</p>
+ <div class="row"><button id="copy">Copy share code</button><button id="load">Load code</button><button id="reset">Reset all</button></div>
+ <textarea id="code" rows="3" style="width:100%;margin-top:6px" placeholder="share code"></textarea>
+</aside>
+
+<main>
+ <div id="previewShell">
+ <div id="profileTopToolbar" role="toolbar" aria-label="Profile editor actions">
+  <button type="button" class="profile-toolbar-action" id="disregardProfileButton">Disregard</button>
+  <div id="avatarAlignModes" role="group" aria-label="Avatar position">
+  <button type="button" data-avatar-align="left" aria-pressed="false">Left</button>
+  <button type="button" data-avatar-align="center" aria-pressed="true">Center</button>
+  <button type="button" data-avatar-align="right" aria-pressed="false">Right</button>
+  </div>
+  <button type="button" class="profile-toolbar-action" id="saveProfileButton">Save Profile</button>
+ </div>
+ <div id="card">
+  <div id="wrapper"></div>
+  <div id="banner">
+   <div id="bannerTintLayer"></div><div id="divider"></div><div id="blendMark"></div><div id="bannerMaskExtension"></div>
+  </div>
+  <div id="profileMore">
+   <button type="button" id="profileMoreButton" aria-label="More profile options" aria-haspopup="menu" aria-expanded="false" aria-controls="profileMoreMenu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>
+   </button>
+   <div id="profileMoreMenu" role="menu" aria-labelledby="profileMoreButton" hidden>
+    <button type="button" class="profile-menu-item" role="menuitem" data-profile-action="main">View Profile</button>
+    <button type="button" class="profile-menu-item" role="menuitem" data-profile-action="share">Share Profile</button>
+    <div class="profile-menu-separator" role="separator"></div>
+    <button type="button" class="profile-menu-item" role="menuitem" data-profile-action="ignore">Ignore</button>
+    <button type="button" class="profile-menu-item danger" role="menuitem" data-profile-action="block">Block</button>
+    <button type="button" class="profile-menu-item danger" role="menuitem" data-profile-action="report">Report User</button>
+    <div class="profile-menu-separator" role="separator"></div>
+    <button type="button" class="profile-menu-item" role="menuitem" data-profile-action="copy-link">Copy Link</button>
+    <button type="button" class="profile-menu-item" role="menuitem" data-profile-action="copy-id">Copy User ID</button>
+   </div>
+  </div>
+  <div id="profileActions">
+   <div id="avatar"><div id="avatarFrame"></div><span id="avatarStatus" role="img" aria-label="Online"></span></div>
+   <button type="button" class="profile-action message" id="messageUser" aria-label="Message user">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.93 3 3 6.42 3 10.63c0 2.25 1.18 4.27 3.07 5.61-.14 1.11-.58 2.15-1.28 3.02 1.78-.13 3.25-.72 4.31-1.66.91.26 1.9.4 2.9.4 5.07 0 9-3.42 9-7.37S17.07 3 12 3Z"></path></svg>
+   </button>
+   <button type="button" class="profile-action add-friend" id="addFriend">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1c-2.67 0-5 1.34-5 3v2h8.2a4.5 4.5 0 0 1-.7-2.4c0-.96.3-1.85.8-2.58A10 10 0 0 0 6 9Zm7-1v2h-2v2h2v2h2v-2h2v-2h-2V8z"></path></svg>
+    Add Friend
+   </button>
+  </div>
+  <div id="body">
+   <div class="profile-identity">
+    <div class="profile-name-row">
+     <h2 id="name"></h2>
+    </div>
+    <div class="profile-awards"><span id="badges"></span></div>
+   </div>
+   <div id="profileTabs" role="tablist" aria-label="Profile sections">
+    <button type="button" class="profile-tab" id="tabBioButton" role="tab" aria-selected="true" aria-controls="tabBio" tabindex="0">Bio</button>
+    <button type="button" class="profile-tab" id="tabFriendsButton" role="tab" aria-selected="false" aria-controls="tabFriends" tabindex="-1">Friends</button>
+   </div>
+   <section class="profile-panel" id="tabBio" role="tabpanel" aria-labelledby="tabBioButton">
+    <div id="profileBio" contenteditable="plaintext-only" role="textbox" aria-label="Bio" aria-multiline="true" spellcheck="true"></div>
+    <div class="profile-section-title">Roles</div>
+    <div class="profile-role-list" id="profileRoleList"></div>
+    <button type="button" class="profile-role-add" id="addRoleButton" aria-label="Add role" aria-expanded="false" aria-controls="roleComposer">+</button>
+    <form class="profile-role-composer" id="roleComposer" hidden>
+     <input type="text" id="newRoleName" maxlength="24" placeholder="Role name" aria-label="New role name" required>
+     <button type="submit">Add</button>
+     <button type="button" id="cancelRole">Cancel</button>
+    </form>
+   </section>
+   <section class="profile-panel profile-friends" id="tabFriends" role="tabpanel" aria-labelledby="tabFriendsButton" hidden>
+    <div class="profile-friend"><span class="profile-friend-avatar" aria-hidden="true">A</span><span><span class="profile-friend-name">Aster</span><span class="profile-friend-note">Placeholder friend</span></span></div>
+    <div class="profile-friend"><span class="profile-friend-avatar" aria-hidden="true">M</span><span><span class="profile-friend-name">Mika</span><span class="profile-friend-note">Placeholder friend</span></span></div>
+    <div class="profile-friend"><span class="profile-friend-avatar" aria-hidden="true">R</span><span><span class="profile-friend-name">Rowan</span><span class="profile-friend-note">Placeholder friend</span></span></div>
+   </section>
+  </div>
+  <canvas id="fx"></canvas>
+  <div id="quote"></div>
+ </div>
+ <div id="profileBottomToolbar" role="group" aria-label="Profile save and preview actions">
+  <button type="button" id="previewProfileButton">Preview Profile</button>
+  <button type="button" id="saveDraftButton">Save Draft</button>
+  <button type="button" id="saveMainProfileButton">Save to Main Profile</button>
+ </div>
+ </div>
+</main>
+
+<aside class="right">
+ <h1>Profile media</h1>
+ <p class="panel-intro" id="catNote">Choose an image from a library, or paste a direct URL in the advanced field.</p>
+
+ <h2>Avatar image</h2>
+ <div class="picker"><input type="text" class="pfilter" data-for="avatar" placeholder="search avatars..."><div class="grid" id="pickAvatar"></div></div>
+ <label><span>Image URL</span><input type="text" id="pimg" placeholder="blank = your saved pfp"></label>
+ <button type="button" class="mini" id="removeProfileImage" aria-pressed="false">Remove profile image</button>
+ <label><span>Size</span><input type="range" id="pfpSize" min="60" max="190"></label>
+ <label><span>Corners</span><input type="range" id="pfpRadius" min="0" max="50"></label>
+ <label><span>Border</span><input type="range" id="pfpBorderSize" min="0" max="25"></label>
+ <label><span>Status</span><select id="statusMode"><option value="green">Green</option><option value="red">Red</option><option value="yellow">Yellow</option><option value="moon">Moon</option><option value="grey">Grey</option></select></label>
+ <label><span>Border colour</span><select id="pfpBorderMode"><option value="default">Default</option><option value="custom">Custom</option></select></label>
+ <label id="pfpBorderColorControl" hidden><span>Custom colour</span><input type="color" id="pfpBorderColor"></label>
+ <label><span>Pixelate</span><input type="range" id="pixelate" min="0" max="128" step="8"></label>
+ <div class="media-strip">
+  <button type="button" class="mini" data-pixel="0">Off</button><button type="button" class="mini" data-pixel="32">32</button><button type="button" class="mini" data-pixel="64">64</button><button type="button" class="mini" data-pixel="128">128</button>
+  <button type="button" class="mini" id="cropAvatarBtn">Crop avatar</button>
+ </div>
+
+ <h2>Avatar frame</h2>
+ <div class="picker"><input type="text" class="pfilter" data-for="frame" placeholder="search frames..."><div class="grid" id="pickFrame"></div></div>
+ <label><span>Image URL</span><input type="text" id="pframe" placeholder="blank = none"></label>
+ <div class="media-strip">
+  <button type="button" class="mini" id="importFrameBtn">Import frame image</button>
+  <input type="file" id="frameFile" accept="image/*" hidden>
+  <span class="tiny" id="frameImportStatus" role="status" aria-live="polite"></span>
+ </div>
+ <label><span>Scale</span><input type="range" id="pframeScale" min="80" max="200"></label>
+
+ <h2>Card wrapper</h2>
+ <label><span>Background</span><select id="pwrapperMode"><option value="image">Image</option><option value="color">Solid colour</option></select></label>
+ <label id="wrapperColorControl" hidden><span>Colour</span><input type="color" id="pwrapperColor"></label>
+ <div id="wrapperImageControls">
+  <div class="picker"><input type="text" class="pfilter" data-for="wrapper" placeholder="search wrappers..."><div class="grid" id="pickWrapper"></div></div>
+  <label><span>Image URL</span><input type="text" id="pwrapper" placeholder="blank = none"></label>
+ </div>
+ <label><span>Opacity</span><input type="range" id="pwrapperOpacity" min="0" max="100"></label>
+
+ <h2>Banner image</h2>
+ <div class="picker"><input type="text" class="pfilter" data-for="banner" placeholder="search banners..."><div class="grid" id="pickBanner"></div></div>
+ <label><span>Image URL</span><input type="text" id="bimgMedia" placeholder="blank = default"></label>
+ <label><span>Tint</span><input type="color" id="bannerTint"></label>
+ <div class="media-strip"><button type="button" class="mini" id="cropBannerBtn">Crop banner</button></div>
+</aside>
+</div>
+
+<div id="cropModal" aria-hidden="true">
+  <div id="cropBox">
+    <div id="cropCanvasWrap"><img id="cropImage" alt="crop area"></div>
+    <div class="crop-actions">
+      <button id="cropCancel" type="button">Cancel</button>
+      <button id="cropApply" type="button">Apply crop</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+<script>
+"use strict";
+const KEY = "ws_profile_style_test";
+const MAIN_PROFILE_KEY = "ws_profile_style_main";
+const PROFILE_IMAGE_DIR = "../../../assets/images/";
+const PROFILE_PLACEHOLDER = `${PROFILE_IMAGE_DIR}placeholder-profile.jpg`;
+const LOCAL_FRAME_MEDIA = [
+  { label: "Bloody", url: `${PROFILE_IMAGE_DIR}bloody.png`, scale: 120 },
+  { label: "Flowers", url: `${PROFILE_IMAGE_DIR}flowers.png`, scale: 120 }
+];
+const PRESET_MEDIA = {
+  avatar: [
+    { label: "Default", value: "https://raw.githubusercontent.com/bguhm/bguhm.github.io/main/system/images/profile.png" },
+    { label: "Smile", value: "https://cdn.jsdelivr.net/gh/mcmattyobriore/yogurtyooo.github.io@main/system/images/profile/smile.png" },
+    { label: "Glitched", value: "https://cdn.jsdelivr.net/gh/mcmattyobriore/yogurtyooo.github.io@main/system/images/profile/glitched.jpeg" },
+    { label: "Dream", value: "https://cdn.jsdelivr.net/gh/mcmattyobriore/yogurtyooo.github.io@main/system/images/profile/dream.jpeg" },
+    { label: "Starwalk", value: "https://cdn.jsdelivr.net/gh/mcmattyobriore/yogurtyooo.github.io@main/system/images/profile/starwalk.jpeg" }
+  ],
+  frame: [
+    { label: "Golden", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/frames/golden/splash.png" },
+    { label: "Eyepatch", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/frames/eyepatch/splash.png" },
+    ...LOCAL_FRAME_MEDIA.map(({ label, url }) => ({ label, value: url }))
+  ],
+  wrapper: [
+    { label: "Afterlife", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/wrappers/afterlife/splash.jpg" },
+    { label: "Antidote", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/wrappers/antidote/splash.jpg" },
+    { label: "Falling Cards", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/wrappers/falling-cards/splash.gif" }
+  ],
+  banner: [
+    { label: "Mars", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/banners/a-distant-mars/splash.jpg" },
+    { label: "Angel", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/banners/autumns-ghostface/splash.jpg" },
+    { label: "Ghostface", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/banners/autumns-ghostface/splash.jpg" },
+    { label: "Punk Future", value: "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/banners/a-punk-future/splash.gif" }
+  ]
+};
+const DEF = {layoutVersion:2,divStyle:"none",divFill:"color",divColor:"#ff4444",divSize:4,bw:1,bc1:"#383a40",bc2:"#383a40",ba:135,bh:210,r:12,bimg:"",roles:["Community Member","Creative"],bioText:"",
+  ach:[],achDemo:false,qText:"your status here",qSize:16,qColor:"#ffffff",qx:20,qy:19,qPositioned:false,qPositionVersion:1,
+  fx_t:"none",fx_n:60,nm:"",nf:"system-ui,sans-serif",ns:24,nc:"#f2f3f5",no:0,nb:true,ni:false,statusMode:"green",
+  pimg:"",pimgRemoved:false,pframe:"",pframeScale:120,pwrapper:"",pwrapperMode:"image",pwrapperColor:"#383a40",pwrapperOpacity:100,pfpRadius:50,pfpSize:116,pfpAlign:"center",pfpBorderSize:4,pfpBorderMode:"default",pfpBorderColor:"#383a40",bimgMedia:"",bannerTint:"#ff4444",pixelate:0};
+const FALLBACK_ACH = {
+  wannatutorialize:{"metadata-title":"WannaTutorialize","image-url":"https://placehold.co/64x64/ff4444/ffffff.png?text=WT"},
+  criticalReviewer:{"metadata-title":"Critical Reviewer","image-url":"https://placehold.co/64x64/ff8a00/111111.png?text=CR"},
+  adventurist:{"metadata-title":"Adventurist","image-url":"https://placehold.co/64x64/8a80ff/111111.png?text=A"}
+};
+const $ = (id) => document.getElementById(id);
+const DIVIDER_ASSETS = {
+  drip: "../../../assets/images/dripping-paint.png",
+  xmaslights: "../../../assets/images/xmaslights.png"
+};
+const bannerImageSizes = new Map();
+const ls = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+const matchMeta = (v) => v && typeof v === "object" ? (v["metadata-title"] || v.title || v.name || "") : "";
+const matchImage = (v) => v && typeof v === "object" ? (v["image-url"] || v.image || v.src || "") : "";
+const toAchievementList = (obj) => Object.entries(obj || {}).map(([id, meta]) => ({
+  id, title: matchMeta(meta) || id, image: matchImage(meta) || ""
+})).filter((item) => item.title && item.id);
+const isAnimatedMedia = (src) => /(?:\.gif(?:[?#]|$)|data:image\/gif)/i.test(String(src || ""));
+const escapeCssUrl = (src) => String(src || "").replace(/"/g, "%22");
+function pixelateImageData(srcUrl, blocks = 32, outSize = 300) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    if (!String(srcUrl).startsWith("data:")) img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const sourceWidth = img.naturalWidth || img.width;
+        const sourceHeight = img.naturalHeight || img.height;
+        const sourceMax = Math.max(sourceWidth, sourceHeight) || 1;
+        const smallScale = Math.max(1, blocks) / sourceMax;
+        const outputScale = outSize / sourceMax;
+        const smallWidth = Math.max(1, Math.round(sourceWidth * smallScale));
+        const smallHeight = Math.max(1, Math.round(sourceHeight * smallScale));
+        const outputWidth = Math.max(1, Math.round(sourceWidth * outputScale));
+        const outputHeight = Math.max(1, Math.round(sourceHeight * outputScale));
+        const small = document.createElement("canvas");
+        small.width = smallWidth; small.height = smallHeight;
+        const sctx = small.getContext("2d");
+        sctx.imageSmoothingEnabled = true;
+        sctx.drawImage(img, 0, 0, smallWidth, smallHeight);
+        const big = document.createElement("canvas");
+        big.width = outputWidth; big.height = outputHeight;
+        const bctx = big.getContext("2d");
+        bctx.imageSmoothingEnabled = false;
+        bctx.drawImage(small, 0, 0, smallWidth, smallHeight, 0, 0, outputWidth, outputHeight);
+        resolve(big.toDataURL("image/png"));
+      } catch (err) { reject(err); }
+    };
+    img.onerror = () => reject(new Error("image load failed"));
+    img.src = srcUrl;
+  });
+}
+let ACH = toAchievementList(FALLBACK_ACH);
+let S, storedState = {};
+try {
+  const parsed = JSON.parse(ls(KEY) || "{}");
+  storedState = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  S = { ...DEF, ...storedState };
+} catch (_) { S = { ...DEF }; }
+const legacyLayout = storedState.layoutVersion !== 2 && Object.keys(storedState).length > 0;
+const legacyMaskStyle = S.divStyle === "mask";
+if (legacyMaskStyle) S.divStyle = "wave";
+if (!["left", "center", "right"].includes(S.pfpAlign)) S.pfpAlign = DEF.pfpAlign;
+if (!["green", "red", "yellow", "moon", "grey"].includes(S.statusMode)) S.statusMode = DEF.statusMode;
+if (typeof S.bioText !== "string") S.bioText = DEF.bioText;
+if (!Array.isArray(S.roles)) S.roles = [...DEF.roles];
+S.roles = S.roles.filter((role) => typeof role === "string" && role.trim()).slice(0, 12);
+const save = () => {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch (_) { return false; }
+};
+function notifyProfile(message, variant = "primary") {
+  if (!message) return;
+  const icons = { primary: "info-circle", success: "check-circle", warning: "exclamation-triangle", danger: "exclamation-octagon" };
+  const fallback = () => {
+    const toast = document.createElement("div");
+    toast.className = "profile-alert-fallback";
+    toast.setAttribute("role", variant === "danger" ? "alert" : "status");
+    toast.textContent = message;
+    document.body.append(toast);
+    window.setTimeout(() => toast.remove(), 5000);
+  };
+  const alert = document.createElement("sl-alert");
+  alert.className = "profile-alert";
+  alert.setAttribute("variant", variant);
+  alert.setAttribute("closable", "");
+  alert.setAttribute("duration", "5000");
+  const icon = document.createElement("sl-icon");
+  icon.slot = "icon";
+  icon.name = icons[variant] || icons.primary;
+  const text = document.createElement("span");
+  text.textContent = message;
+  alert.append(icon, text);
+  document.body.append(alert);
+  void Promise.race([
+    customElements.whenDefined("sl-alert").then(() => true),
+    new Promise((resolve) => window.setTimeout(() => resolve(false), 4000))
+  ]).then(async (ready) => {
+    if (!ready) {
+      alert.remove();
+      console.error("Shoelace alerts did not load; using the accessible profile notice fallback.");
+      fallback();
+      return;
+    }
+    await alert.toast();
+  }).catch((error) => {
+    alert.remove();
+    console.error("Could not display the profile alert.", error);
+    fallback();
+  });
+}
+const needsBubbleMigration = storedState.qPositionVersion !== DEF.qPositionVersion;
+if (needsBubbleMigration) {
+  S.qPositioned = false;
+  S.qx = DEF.qx;
+  S.qy = DEF.qy;
+  S.qPositionVersion = DEF.qPositionVersion;
+}
+if (legacyLayout) {
+  if (S.divStyle === "line" && S.divColor === "#ff4444" && S.divSize === 4) S.divStyle = "none";
+  if (S.bw === 4 && S.bc1 === "#ff4444" && S.bc2 === "#ff4444") {
+    S.bw = 1; S.bc1 = "#383a40"; S.bc2 = "#383a40";
+  }
+  if (S.bh === 160) S.bh = 210;
+  if (S.r === 18) S.r = 12;
+  if (S.nf === "ui-monospace,Menlo,Consolas,monospace" && !S.nm) S.nf = "system-ui,sans-serif";
+  S.layoutVersion = 2;
+  save();
+} else if (needsBubbleMigration || legacyMaskStyle) save();
+const cloneProfileState = (state) => JSON.parse(JSON.stringify(state));
+const initialProfileSnapshot = cloneProfileState(S);
+let profileDraftBeforePreview = null;
+let viewingSavedProfile = false;
+function readMainProfile() {
+  const raw = localStorage.getItem(MAIN_PROFILE_KEY);
+  if (raw === null) return null;
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("The saved profile data is invalid.");
+  }
+  const profile = { ...DEF };
+  Object.keys(DEF).forEach((key) => {
+    if (key in parsed && typeof parsed[key] === typeof DEF[key]) profile[key] = parsed[key];
+  });
+  if (!Array.isArray(profile.roles)) profile.roles = [...DEF.roles];
+  if (!Array.isArray(profile.ach)) profile.ach = [];
+  return profile;
+}
+function writeMainProfile(profile) {
+  try {
+    localStorage.setItem(MAIN_PROFILE_KEY, JSON.stringify(profile));
+    return true;
+  } catch (error) {
+    console.error("Could not save the main profile.", error);
+    return false;
+  }
+}
+let earned = {};
+try { earned = JSON.parse(ls("ws_achievements") || "{}") || {}; } catch (_) {}
+const hasAch = (id) => S.achDemo || id in earned;
+
+function syncBannerFields() {
+  const bannerUrl = S.bimg || S.bimgMedia || "";
+  if ($("bimg")) $("bimg").value = bannerUrl;
+  if ($("bimgMedia")) $("bimgMedia").value = bannerUrl;
+}
+
+function populatePresets() {
+  Object.entries(PRESET_MEDIA).forEach(([key, items]) => {
+    const sel = $(key + "Preset");
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Custom URL</option>' + items.map((item) => `<option value="${item.value}">${item.label}</option>`).join("");
+    sel.value = "";
+    sel.addEventListener("change", () => {
+      if (!sel.value) return;
+      const target = { avatar: "pimg", frame: "pframe", wrapper: "pwrapper", banner: "bimgMedia" }[key];
+      if (!target) return;
+      S[target] = sel.value;
+      if (key === "banner") S.bimg = sel.value;
+      save(); paint();
+    });
+  });
+}
+
+const SIMPLE = ["divStyle","divFill","divColor","divSize","bw","bc1","bc2","ba","bh","r","qText","qSize","qColor","fx_t","fx_n","nm","nf","ns","nc","no","pimg","pframe","pframeScale","pwrapper","pwrapperMode","pwrapperColor","pwrapperOpacity","pfpSize","pfpBorderSize","pfpBorderMode","pfpBorderColor","bimgMedia","bannerTint","pfpRadius","pixelate","statusMode"];
+const rangeUnits = { bh:"px", bw:"px", divSize:"px", fx_n:"", ns:"px", no:"px", pfpSize:"px", pfpRadius:"%", pfpBorderSize:"px", pframeScale:"%", pwrapperOpacity:"%", pixelate:"", qSize:"px", r:"px" };
+function showRangeValue(input) {
+  const output = input.nextElementSibling;
+  const min = Number(input.min) || 0;
+  const max = Number(input.max) || 100;
+  const progress = max === min ? 0 : ((Number(input.value) - min) / (max - min)) * 100;
+  input.style.setProperty("--range-progress", `${Math.min(100, Math.max(0, progress))}%`);
+  if (output?.tagName !== "OUTPUT") return;
+  const isPaintMaskSize = input.id === "divSize" && S.divStyle === "drip" && S.divFill === "mask";
+  output.value = `${isPaintMaskSize ? Number(input.value) * 4 : input.value}${rangeUnits[input.id] ?? ""}`;
+  output.textContent = output.value;
+}
+SIMPLE.forEach((k) => {
+  const el = $(k); if (!el) return;
+  if (k === "pframe" && String(S[k]).startsWith("data:image/")) {
+    el.value = "";
+    el.placeholder = "Imported frame image (stored locally)";
+  } else {
+    el.value = S[k] ?? "";
+  }
+  if (el.type === "range") {
+    const output = document.createElement("output");
+    output.setAttribute("aria-hidden", "true");
+    el.insertAdjacentElement("afterend", output);
+    showRangeValue(el);
+  }
+  el.addEventListener("input", () => {
+    const val = el.type === "range" ? +el.value : el.value;
+    if (k === "bimgMedia") {
+      S.bimg = val;
+      S.bimgMedia = val;
+    } else if (k === "pfpRadius") {
+      S.pfpRadius = val;
+    } else {
+      S[k] = val;
+    }
+    if (el.type === "range") showRangeValue(el);
+    save(); paint();
+  });
+});
+const profileBio = $("profileBio");
+profileBio.textContent = S.bioText;
+profileBio.addEventListener("beforeinput", (event) => {
+  if (!event.inputType.startsWith("insert") || typeof event.data !== "string") return;
+  const selection = window.getSelection();
+  const selectedLength = selection && profileBio.contains(selection.anchorNode) ? selection.toString().length : 0;
+  if ((profileBio.innerText || "").length - selectedLength + event.data.length > 500) event.preventDefault();
+});
+profileBio.addEventListener("input", () => {
+  if (viewingSavedProfile) return;
+  let value = (profileBio.innerText || "").replace(/\r\n?/g, "\n");
+  if (value.length > 500) {
+    value = value.slice(0, 500);
+    profileBio.textContent = value;
+  }
+  S.bioText = value;
+  if (!save()) notifyProfile("Could not save your bio. Check browser storage and try again.", "danger");
+});
+["nb","ni","achDemo"].forEach((k) => { const el = $(k); if (!el) return; el.checked = !!S[k]; el.addEventListener("change", () => { S[k] = el.checked; save(); paint(); }); });
+function syncProfileEditorFields() {
+  SIMPLE.forEach((key) => {
+    const input = $(key);
+    if (!input) return;
+    input.value = S[key] ?? "";
+    if (input.type === "range") showRangeValue(input);
+  });
+  ["nb", "ni", "achDemo"].forEach((key) => {
+    if ($(key)) $(key).checked = !!S[key];
+  });
+  $("profileBio").textContent = S.bioText || "";
+  renderAllPicks();
+  paint();
+}
+
+function svgFor(style, c) {
+  const p = { line: "M0 0H40V12H0Z", jagged: "M0 0H40L30 12L20 4L10 12Z", drip: "M0 0H40V3C38 3 38 12 35 12S32 3 28 3H20V5C19 5 19 10 17 10S15 5 13 3H0Z", wave: "M0 0H40V4Q30 12 20 4T0 4Z" }[style];
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 12' preserveAspectRatio='none'><path d='${p}' fill='${c}'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+function getBannerCoverSize(src, width, height) {
+  let image = bannerImageSizes.get(src);
+  if (!image) {
+    image = new Image();
+    bannerImageSizes.set(src, image);
+    image.onload = () => {
+      if (String(S.bimg || S.bimgMedia || "").trim() === src) paint();
+    };
+    image.onerror = () => bannerImageSizes.delete(src);
+    image.src = src;
+  }
+  if (!image.complete || !image.naturalWidth || !image.naturalHeight) return null;
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  return { width: image.naturalWidth * scale, height: image.naturalHeight * scale };
+}
+function hueForColor(color) {
+  const match = /^#?([0-9a-f]{6})$/i.exec(String(color || ""));
+  if (!match) return 0;
+  const hex = match[1];
+  const [r, g, b] = [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+  if (!delta) return 0;
+  const hue = max === r ? 60 * (((g - b) / delta) % 6)
+    : max === g ? 60 * ((b - r) / delta + 2)
+      : 60 * ((r - g) / delta + 4);
+  return Math.round((hue + 360) % 360);
+}
+function renderRoles() {
+  const list = $("profileRoleList");
+  if (!list) return;
+  list.replaceChildren();
+  S.roles.forEach((role) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "profile-role";
+    item.textContent = role;
+    item.setAttribute("aria-label", `Remove ${role} role`);
+    item.title = `Remove ${role}`;
+    item.addEventListener("click", () => {
+      const previousRoles = [...S.roles];
+      S.roles = S.roles.filter((current) => current !== role);
+      if (!save()) {
+        S.roles = previousRoles;
+        notifyProfile("Could not save this change. Check browser storage and try again.", "danger");
+        return;
+      }
+      notifyProfile(`${role} role removed.`, "success");
+      paint();
+    });
+    list.appendChild(item);
+  });
+  $("addRoleButton").disabled = S.roles.length >= 12;
+  $("addRoleButton").title = S.roles.length >= 12 ? "Up to 12 roles can be previewed" : "Add a role";
+}
+
+function buildAchievementControls() {
+  const area = $("achList"); if (!area) return;
+  area.innerHTML = "";
+  ACH.forEach((a) => {
+    const wrap = document.createElement("label");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "achievement-choice" + (S.ach.includes(a.id) ? " selected" : "");
+    btn.title = a.title;
+    btn.setAttribute("aria-label", a.title);
+    if (a.image) {
+      const img = document.createElement("img");
+      img.src = a.image;
+      img.alt = a.title;
+      btn.appendChild(img);
+    }
+    btn.addEventListener("click", () => {
+      const current = S.ach.includes(a.id);
+      S.ach = S.ach.filter((x) => x !== a.id);
+      if (!current) {
+        if (S.ach.length >= 5) return;
+        S.ach.push(a.id);
+      }
+      save(); buildAchievementControls(); paint();
+    });
+    wrap.appendChild(btn); area.appendChild(wrap);
+  });
+}
+
+async function loadAchievements() {
+  try {
+    const res = await fetch("./achievements.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("missing");
+    const data = await res.json();
+    const next = toAchievementList(data);
+    if (next.length) ACH = next;
+  } catch (_) {
+    ACH = toAchievementList(FALLBACK_ACH);
+  }
+  buildAchievementControls();
+  paint();
+}
+
+let cropper = null;
+let cropTarget = null;
+function openCrop(targetKey) {
+  const cropModal = $("cropModal");
+  const cropImg = $("cropImage");
+  const src = targetKey === "banner" ? (S.bimg || S.bimgMedia || "") : (S.pimg || "");
+  if (!src) return;
+  cropTarget = targetKey;
+  cropImg.src = src;
+  cropModal.classList.add("visible");
+  cropModal.setAttribute("aria-hidden", "false");
+  if (cropper) cropper.destroy();
+  cropper = new Cropper(cropImg, {
+    aspectRatio: targetKey === "banner" ? 4 / 1 : 1,
+    viewMode: 1,
+    dragMode: "move",
+    autoCropArea: 1,
+    background: false,
+    responsive: true,
+    modal: true,
+    guides: true,
+    highlight: true
+  });
+}
+function closeCrop() {
+  const cropModal = $("cropModal");
+  cropModal.classList.remove("visible");
+  cropModal.setAttribute("aria-hidden", "true");
+  if (cropper) { cropper.destroy(); cropper = null; }
+  cropTarget = null;
+}
+$("cropCancel").addEventListener("click", closeCrop);
+$("cropApply").addEventListener("click", () => {
+  if (!cropper || !cropTarget) return;
+  const canvas = cropper.getCroppedCanvas({ width: 600, height: cropTarget === "banner" ? 150 : 600, imageSmoothingEnabled: true });
+  const dataUrl = canvas.toDataURL("image/png");
+  if (cropTarget === "banner") { S.bimg = dataUrl; S.bimgMedia = dataUrl; }
+  else { S.pimg = dataUrl; }
+  save(); paint(); closeCrop();
+});
+$("cropAvatarBtn").addEventListener("click", () => openCrop("avatar"));
+$("cropBannerBtn").addEventListener("click", () => openCrop("banner"));
+$("importFrameBtn").addEventListener("click", () => $("frameFile").click());
+$("frameFile").addEventListener("change", () => {
+  const file = $("frameFile").files?.[0];
+  const status = $("frameImportStatus");
+  if (!file) return;
+  if (!file.type.startsWith("image/") && !/\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(file.name)) {
+    status.textContent = "Choose an image file.";
+    $("frameFile").value = "";
+    return;
+  }
+  if (file.size > 1.5 * 1024 * 1024) {
+    status.textContent = "Image must be 1.5 MB or smaller.";
+    $("frameFile").value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = () => {
+    status.textContent = "Could not read this image. Try another file.";
+    $("frameFile").value = "";
+  };
+  reader.onload = () => {
+    const previousFrame = S.pframe;
+    S.pframe = String(reader.result || "");
+    if (!save()) {
+      S.pframe = previousFrame;
+      status.textContent = "Could not save this image in browser storage.";
+    } else {
+      $("pframe").value = "";
+      $("pframe").placeholder = `Imported: ${file.name}`;
+      status.textContent = "Frame imported.";
+      paint();
+      renderAllPicks();
+    }
+    $("frameFile").value = "";
+  };
+  reader.readAsDataURL(file);
+});
+
+function applyImageAsset(targetEl, rawUrl, forcePixelate = null) {
+  if (!rawUrl) { targetEl.style.backgroundImage = ""; return; }
+  const url = String(rawUrl).trim();
+  const shouldPixelate = forcePixelate ?? (Number(S.pixelate) > 0 && !isAnimatedMedia(url));
+  if (shouldPixelate) {
+    pixelateImageData(url, Number(S.pixelate) || 32).then((data) => {
+      targetEl.style.backgroundImage = `url("${escapeCssUrl(data)}")`;
+    }).catch(() => {
+      targetEl.style.backgroundImage = `url("${escapeCssUrl(url)}")`;
+    });
+    return;
+  }
+  targetEl.style.backgroundImage = `url("${escapeCssUrl(url)}")`;
+}
+
+function paint() {
+  const card = $("card"), st = card.style;
+  st.setProperty("--bw", S.bw + "px"); st.setProperty("--bc1", S.bc1); st.setProperty("--bc2", S.bc2);
+  st.setProperty("--ba", S.ba + "deg"); st.setProperty("--r", S.r + "px");
+  const compactProfile = S.pfpAlign === "left" || S.pfpAlign === "right";
+  const renderedAvatarSize = compactProfile
+    ? Math.min(Number(S.pfpSize), Math.max(84, (window.innerWidth - 72) * 0.4))
+    : Number(S.pfpSize);
+  st.setProperty("--avatar-size", `${renderedAvatarSize}px`);
+  $("profileEditor").dataset.profileAlign = S.pfpAlign;
+  card.dataset.avatarAlign = S.pfpAlign;
+  const avatar = $("avatar");
+  $("body").dataset.avatarAlign = S.pfpAlign;
+  document.querySelectorAll("#avatarAlignModes [data-avatar-align]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.avatarAlign === S.pfpAlign));
+  });
+  avatar.style.borderRadius = `${S.pfpRadius}%`;
+  avatar.style.borderWidth = `${S.pfpBorderSize}px`;
+  avatar.style.borderColor = S.pfpBorderMode === "custom" ? S.pfpBorderColor : "#383a40";
+  $("pfpBorderColorControl").hidden = S.pfpBorderMode !== "custom";
+  const status = $("avatarStatus");
+  const statusNames = { green: "Green", red: "Red", yellow: "Yellow", moon: "Moon", grey: "Grey" };
+  status.dataset.status = S.statusMode;
+  status.setAttribute("aria-label", `${statusNames[S.statusMode]} status`);
+  const statusAvatarSize = renderedAvatarSize;
+  const statusAvatarBorder = Number(S.pfpBorderSize);
+  const statusSize = 24;
+  const statusOffset = Number(S.pfpRadius) >= 49
+    ? statusAvatarSize / 2 - statusAvatarBorder - (statusAvatarSize - statusAvatarBorder * 2) / (2 * Math.SQRT2) - statusSize / 2
+    : -statusSize / 2;
+  status.style.right = `${statusOffset}px`;
+  status.style.bottom = `${statusOffset}px`;
+  const savedPic = S.pimgRemoved ? "" : ls("profilePic") || ls("profilePfp") || "";
+  const requestedPic = (S.pimg || savedPic || PROFILE_PLACEHOLDER).trim();
+  const pic = /^(https?:|data:image)/i.test(requestedPic) || requestedPic.startsWith(PROFILE_IMAGE_DIR)
+    ? requestedPic
+    : PROFILE_PLACEHOLDER;
+  applyImageAsset(avatar, pic, Number(S.pixelate) > 0 && !isAnimatedMedia(pic));
+  $("removeProfileImage").setAttribute("aria-pressed", String(!!S.pimgRemoved));
+  const banner = $("banner");
+  const bannerUrl = S.bimg || S.bimgMedia || "";
+  const bannerHeight = Number(S.bh);
+  banner.style.height = `${bannerHeight}px`;
+  st.setProperty("--profile-banner-height", `${bannerHeight}px`);
+  banner.style.backgroundImage = bannerUrl.trim()
+    ? `url("${escapeCssUrl(bannerUrl.trim())}")`
+    : `linear-gradient(120deg,color-mix(in srgb,${S.bannerTint || S.divColor} 34%,#8a8172),#4a4543 58%,#292b2e)`;
+  banner.style.backgroundSize = bannerUrl.trim() ? "cover" : "";
+  banner.style.backgroundPosition = bannerUrl.trim() ? "center" : "";
+  banner.style.backgroundRepeat = bannerUrl.trim() ? "no-repeat" : "";
+  const useBannerMask = S.divFill === "mask" && ["line", "jagged", "drip", "wave"].includes(S.divStyle);
+  const tint = $("bannerTintLayer");
+  tint.style.backgroundColor = S.bannerTint || S.divColor;
+  tint.style.opacity = bannerUrl.trim() && !useBannerMask ? ".16" : "0";
+  const d = $("divider");
+  banner.style.borderBottom = "0";
+  d.style.cssText = "left:0;right:0;bottom:0;height:0";
+  if (S.divStyle === "line" && !useBannerMask) banner.style.borderBottom = `${S.divSize}px solid ${S.divColor}`;
+  else if (!useBannerMask && ["drip", "xmaslights"].includes(S.divStyle)) {
+    const imageHeight = Math.max(56, Number(S.divSize) * 4);
+    const imageUrl = DIVIDER_ASSETS[S.divStyle];
+    const recolor = S.divStyle === "drip" ? `filter:hue-rotate(${hueForColor(S.divColor)}deg);` : "";
+    d.style.cssText = `left:0;right:0;bottom:-${imageHeight}px;height:${imageHeight}px;background:url("${imageUrl}") 0 0/auto 100% repeat-x;${recolor}z-index:2`;
+  } else if (!useBannerMask && S.divStyle !== "none" && S.divStyle !== "blend") {
+    const h = Math.max(6, S.divSize * 2);
+    d.style.cssText = `left:0;right:0;bottom:${-h + 1}px;height:${h}px;background:${svgFor(S.divStyle, S.divColor)} 0 0/${h * 3.33}px 100% repeat-x;z-index:1`;
+  }
+  const wrapper = $("wrapper");
+  const wrapperUrl = (S.pwrapper || "").trim();
+  const wrapperUsesImage = S.pwrapperMode !== "color";
+  wrapper.style.backgroundColor = wrapperUsesImage ? "transparent" : S.pwrapperColor;
+  wrapper.style.backgroundImage = wrapperUsesImage && wrapperUrl ? `url("${escapeCssUrl(wrapperUrl)}")` : "";
+  wrapper.style.backgroundSize = "100% 100%";
+  wrapper.style.backgroundPosition = "center";
+  wrapper.style.backgroundRepeat = "no-repeat";
+  wrapper.style.opacity = String((Number(S.pwrapperOpacity) || 0) / 100);
+  $("wrapperColorControl").hidden = wrapperUsesImage;
+  $("wrapperImageControls").hidden = !wrapperUsesImage;
+  $("divFillControl").hidden = !["line", "jagged", "drip", "wave"].includes(S.divStyle);
+  $("divColorControl").hidden = !["line", "jagged", "drip", "wave"].includes(S.divStyle) || useBannerMask;
+  const paintMask = S.divStyle === "drip" && useBannerMask;
+  $("divSizeLabel").textContent = paintMask ? "Size" : "Thickness";
+  showRangeValue($("divSize"));
+  const bannerMask = $("bannerMaskExtension");
+  if (useBannerMask) {
+    const maskHeight = S.divStyle === "line" ? Math.max(1, Number(S.divSize)) : Math.max(6, Number(S.divSize) * 2);
+    const bannerStyle = getComputedStyle(banner);
+    const imageMask = S.divStyle === "drip";
+    const paintMaskSize = Number(S.divSize) * 4;
+    const coverSize = bannerUrl.trim()
+      ? getBannerCoverSize(bannerUrl.trim(), banner.clientWidth, banner.offsetHeight)
+      : null;
+    const maskImage = imageMask ? `url("${DIVIDER_ASSETS.drip}")` : svgFor(S.divStyle, "#fff");
+    bannerMask.style.display = "block";
+    bannerMask.style.height = `${imageMask ? paintMaskSize : banner.offsetHeight}px`;
+    bannerMask.style.backgroundColor = "#383a40";
+    bannerMask.style.backgroundImage = bannerStyle.backgroundImage;
+    bannerMask.style.backgroundSize = coverSize
+      ? `${coverSize.width}px ${coverSize.height}px`
+      : bannerStyle.backgroundSize;
+    bannerMask.style.backgroundPosition = coverSize
+      ? `${(banner.clientWidth - coverSize.width) / 2}px ${((banner.offsetHeight - coverSize.height) / 2) - banner.offsetHeight}px`
+      : `50% calc(50% - ${(banner.offsetHeight + (imageMask ? paintMaskSize : banner.offsetHeight)) / 2}px)`;
+    bannerMask.style.backgroundRepeat = bannerStyle.backgroundRepeat;
+    bannerMask.style.maskImage = maskImage;
+    bannerMask.style.maskSize = imageMask ? `${paintMaskSize * 3}px ${paintMaskSize}px` : `${maskHeight * 3.33}px ${maskHeight}px`;
+    bannerMask.style.maskPosition = "left top";
+    bannerMask.style.maskRepeat = "repeat-x";
+    bannerMask.style.webkitMaskImage = maskImage;
+    bannerMask.style.webkitMaskSize = imageMask ? `${paintMaskSize * 3}px ${paintMaskSize}px` : `${maskHeight * 3.33}px ${maskHeight}px`;
+    bannerMask.style.webkitMaskPosition = "left top";
+    bannerMask.style.webkitMaskRepeat = "repeat-x";
+  } else {
+    bannerMask.style.display = "none";
+    bannerMask.style.backgroundColor = "transparent";
+    bannerMask.style.backgroundImage = "none";
+    bannerMask.style.backgroundSize = "";
+    bannerMask.style.backgroundPosition = "";
+    bannerMask.style.maskImage = "none";
+    bannerMask.style.webkitMaskImage = "none";
+  }
+  const blendMark = $("blendMark");
+  if (S.divStyle === "blend") {
+    const markHeight = Math.max(12, Number(S.divSize) * 2);
+    const seamY = banner.offsetTop + banner.offsetHeight - markHeight / 2;
+    const textureUrl = wrapperUsesImage ? wrapperUrl : "";
+    blendMark.style.display = textureUrl ? "block" : "none";
+    blendMark.style.height = `${markHeight}px`;
+    blendMark.style.bottom = `${-markHeight / 2}px`;
+    blendMark.style.backgroundImage = textureUrl ? `url("${escapeCssUrl(textureUrl)}")` : "none";
+    blendMark.style.backgroundSize = `${card.clientWidth}px ${wrapper.clientHeight}px`;
+    blendMark.style.backgroundPosition = `0px -${seamY}px`;
+  } else {
+    blendMark.style.display = "none";
+    blendMark.style.backgroundImage = "none";
+  }
+  const frame = $("avatarFrame");
+  const frameUrl = (S.pframe || "").trim();
+  if (frameUrl) {
+    frame.style.backgroundImage = `url("${escapeCssUrl(frameUrl)}")`;
+    frame.classList.add("visible");
+    const frameSize = renderedAvatarSize * Math.max(0.8, Number(S.pframeScale || 120) / 100);
+    frame.style.width = `${frameSize}px`;
+    frame.style.height = `${frameSize}px`;
+  } else {
+    frame.style.backgroundImage = "";
+    frame.classList.remove("visible");
+  }
+  const n = $("name");
+  n.textContent = S.nm || ls("nickname") || "Your Name";
+  n.style.cssText = `font-family:${S.nf};font-size:${S.ns}px;color:${S.nc};font-weight:${S.nb ? 700 : 400};font-style:${S.ni ? "italic" : "normal"};-webkit-text-stroke:${S.no}px #000;paint-order:stroke fill`;
+  const bodyRect = $("body").getBoundingClientRect();
+  const actionsRect = $("profileActions").getBoundingClientRect();
+  const bodyStyle = getComputedStyle($("body"));
+  const avatarSize = renderedAvatarSize;
+  const contentLeft = bodyRect.left + parseFloat(bodyStyle.paddingLeft);
+  const contentRight = bodyRect.right - parseFloat(bodyStyle.paddingRight);
+  const avatarLeft = S.pfpAlign === "left"
+    ? contentLeft - actionsRect.left
+    : S.pfpAlign === "right"
+      ? contentRight - actionsRect.left - avatarSize
+      : (contentLeft + contentRight) / 2 - actionsRect.left - avatarSize / 2;
+  avatar.style.left = `${Math.max(0, Math.min(actionsRect.width - avatarSize, avatarLeft))}px`;
+  const verticalOffset = !compactProfile && matchMedia("(min-width: 1181px)").matches
+    ? Math.max(0, avatarSize - 116) / 2
+    : 0;
+  card.style.transform = verticalOffset ? `translateY(${verticalOffset}px)` : "";
+  card.style.marginBottom = `${verticalOffset}px`;
+  const q = $("quote");
+  q.textContent = S.qText; q.style.display = S.qText ? "" : "none";
+  q.style.fontSize = S.qSize + "px";
+  q.style.color = S.qColor;
+  if (S.qPositioned) {
+    q.style.left = S.qx + "%";
+    q.style.top = S.qy + "%";
+  } else {
+    const cardRect = card.getBoundingClientRect();
+    const avatarRect = avatar.getBoundingClientRect();
+    const left = Math.min(cardRect.width - q.offsetWidth - 8, Math.max(8, avatarRect.right - cardRect.left - 10));
+    const top = Math.max(8, avatarRect.top - cardRect.top - q.offsetHeight - 8);
+    q.style.left = `${left}px`;
+    q.style.top = `${top}px`;
+  }
+  $("badges").innerHTML = "";
+  S.ach.filter(hasAch).slice(0, 5).forEach((id) => {
+    const a = ACH.find((x) => x.id === id); if (!a) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "badge";
+    b.title = a.title;
+    b.setAttribute("aria-label", a.title);
+    const img = document.createElement("img");
+    img.src = a.image;
+    img.alt = a.title;
+    b.appendChild(img);
+    $("badges").appendChild(b);
+  });
+  renderRoles();
+  syncBannerFields();
+  startFx();
+}
+
+function bindPixelButtons() {
+  document.querySelectorAll("[data-pixel]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = Number(btn.dataset.pixel || 0);
+      $("pixelate").value = value;
+      S.pixelate = value;
+      save(); paint();
+    });
+  });
+}
+
+function bindProfilePreview() {
+  const moreButton = $("profileMoreButton");
+  const menu = $("profileMoreMenu");
+  const tabs = Array.from(document.querySelectorAll("#profileTabs [role=tab]"));
+  const editorAsides = Array.from(document.querySelectorAll("#profileEditor aside"));
+  const controlDisabledStates = new Map();
+  const setViewMode = (enabled) => {
+    viewingSavedProfile = enabled;
+    $("profileEditor").dataset.profileMode = enabled ? "view" : "edit";
+    editorAsides.forEach((aside) => {
+      aside.querySelectorAll("input,select,textarea,button").forEach((control) => {
+        if (!controlDisabledStates.has(control)) controlDisabledStates.set(control, control.disabled);
+        control.disabled = enabled || controlDisabledStates.get(control);
+      });
+    });
+    $("profileBio").contentEditable = enabled ? "false" : "plaintext-only";
+    $("profileBio").setAttribute("aria-readonly", String(enabled));
+    $("previewProfileButton").textContent = enabled ? "Edit Profile" : "Preview Profile";
+    document.querySelectorAll("#avatarAlignModes [data-avatar-align]").forEach((button) => { button.disabled = enabled; });
+    $("saveProfileButton").disabled = enabled;
+    $("saveMainProfileButton").disabled = enabled;
+  };
+  const enterProfileView = (profile, message) => {
+    if (!viewingSavedProfile) profileDraftBeforePreview = cloneProfileState(S);
+    S = cloneProfileState(profile);
+    setViewMode(true);
+    syncProfileEditorFields();
+    notifyProfile(message, "success");
+  };
+  const exitProfileView = (message) => {
+    S = cloneProfileState(profileDraftBeforePreview || initialProfileSnapshot);
+    profileDraftBeforePreview = null;
+    setViewMode(false);
+    syncProfileEditorFields();
+    notifyProfile(message);
+  };
+  const saveToMainProfile = () => {
+    if (viewingSavedProfile) return;
+    const profile = cloneProfileState(S);
+    if (!writeMainProfile(profile)) {
+      notifyProfile("Could not save the main profile. Check browser storage and try again.", "danger");
+      return;
+    }
+    const draftSaved = save();
+    enterProfileView(profile, draftSaved
+      ? "Profile saved locally and opened as a read-only preview."
+      : "Profile saved locally, but the draft copy could not be updated.");
+  };
+  $("previewProfileButton").addEventListener("click", () => {
+    if (viewingSavedProfile) {
+      exitProfileView("Returned to profile editing.");
+      return;
+    }
+    try {
+      const savedProfile = readMainProfile();
+      enterProfileView(savedProfile || S, savedProfile
+        ? "Viewing the saved profile. Bio is read-only."
+        : "No saved profile yet. Previewing this draft with a read-only bio.");
+    } catch (error) {
+      console.error("Could not read the saved main profile.", error);
+      notifyProfile("Could not open the saved profile. Its saved data may be invalid.", "danger");
+    }
+  });
+  $("saveDraftButton").addEventListener("click", () => {
+    const draft = profileDraftBeforePreview || S;
+    try {
+      localStorage.setItem(KEY, JSON.stringify(draft));
+      notifyProfile("Draft saved in this browser.", "success");
+    } catch (error) {
+      console.error("Could not save the profile draft.", error);
+      notifyProfile("Could not save the draft. Check browser storage and try again.", "danger");
+    }
+  });
+  $("saveProfileButton").addEventListener("click", saveToMainProfile);
+  $("saveMainProfileButton").addEventListener("click", saveToMainProfile);
+  $("disregardProfileButton").addEventListener("click", () => {
+    try {
+      const savedProfile = readMainProfile();
+      const restored = savedProfile || initialProfileSnapshot;
+      if (viewingSavedProfile) profileDraftBeforePreview = null;
+      S = cloneProfileState(restored);
+      setViewMode(false);
+      if (!save()) {
+        notifyProfile("Changes were discarded, but the restored draft could not be saved.", "warning");
+        syncProfileEditorFields();
+        return;
+      }
+      syncProfileEditorFields();
+      notifyProfile(savedProfile
+        ? "Changes discarded. Restored the saved main profile."
+        : "Changes discarded. Restored the profile as it was when this page opened.", "success");
+    } catch (error) {
+      console.error("Could not restore the saved profile.", error);
+      notifyProfile("Could not restore the profile. Its saved data may be invalid.", "danger");
+    }
+  });
+  document.querySelectorAll("#avatarAlignModes [data-avatar-align]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (viewingSavedProfile) return;
+      S.pfpAlign = button.dataset.avatarAlign;
+      if (!save()) {
+        notifyProfile("Could not save the avatar position. Check browser storage and try again.", "danger");
+        return;
+      }
+      paint();
+    });
+  });
+  const closeMenu = (restoreFocus = false) => {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    moreButton.setAttribute("aria-expanded", "false");
+    if (restoreFocus) moreButton.focus();
+  };
+  const announce = (message) => notifyProfile(message);
+  const selectTab = (tab) => {
+    tabs.forEach((item) => {
+      const selected = item === tab;
+      item.setAttribute("aria-selected", String(selected));
+      item.tabIndex = selected ? 0 : -1;
+      $(item.getAttribute("aria-controls")).hidden = !selected;
+    });
+    tab.focus();
+  };
+
+  moreButton.addEventListener("click", () => {
+    const opening = menu.hidden;
+    menu.hidden = !opening;
+    moreButton.setAttribute("aria-expanded", String(opening));
+    if (opening) menu.querySelector("[role=menuitem]")?.focus();
+  });
+  menu.addEventListener("click", async (event) => {
+    const item = event.target.closest("[data-profile-action]");
+    if (!item) return;
+    const action = item.dataset.profileAction;
+    closeMenu(true);
+    if (action === "copy-link" || action === "copy-id" || action === "share") {
+      const value = action === "copy-id" ? "2229" : location.href;
+      const label = action === "copy-id" ? "User ID" : "Profile link";
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable in this browser.");
+        await navigator.clipboard.writeText(value);
+        announce(`${label} copied.`);
+      } catch (error) {
+        announce(error.message || `Couldn't copy the ${label.toLowerCase()}.`);
+      }
+      return;
+    }
+    const messages = {
+      main: "Main profile navigation is preview-only.",
+      ignore: "Ignore is preview-only.",
+      block: "Block is preview-only.",
+      report: "Reporting is preview-only."
+    };
+    announce(messages[action] || "This action is preview-only.");
+  });
+  menu.addEventListener("keydown", (event) => {
+    const items = Array.from(menu.querySelectorAll("[role=menuitem]"));
+    const index = items.indexOf(document.activeElement);
+    let next = -1;
+    if (event.key === "ArrowDown") next = (index + 1) % items.length;
+    if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = items.length - 1;
+    if (next >= 0) { event.preventDefault(); items[next].focus(); }
+    if (event.key === "Escape") { event.preventDefault(); closeMenu(true); }
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("#profileMore")) closeMenu();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeMenu(true);
+  });
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectTab(tab));
+    tab.addEventListener("keydown", (event) => {
+      let next = -1;
+      if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+      if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = tabs.length - 1;
+      if (next >= 0) { event.preventDefault(); selectTab(tabs[next]); }
+    });
+  });
+  $("messageUser").addEventListener("click", () => announce("Messaging is preview-only."));
+  $("addFriend").addEventListener("click", () => announce("Adding a friend is preview-only."));
+  const addRoleButton = $("addRoleButton");
+  const roleComposer = $("roleComposer");
+  const roleName = $("newRoleName");
+  addRoleButton.addEventListener("click", () => {
+    roleComposer.hidden = !roleComposer.hidden;
+    addRoleButton.setAttribute("aria-expanded", String(!roleComposer.hidden));
+    if (!roleComposer.hidden) roleName.focus();
+  });
+  $("cancelRole").addEventListener("click", () => {
+    roleComposer.reset();
+    roleComposer.hidden = true;
+    addRoleButton.setAttribute("aria-expanded", "false");
+    addRoleButton.focus();
+  });
+  roleComposer.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const role = roleName.value.trim();
+    if (!role) return;
+    if (S.roles.length >= 12) {
+      notifyProfile("The preview supports up to 12 roles.", "warning");
+      return;
+    }
+    if (S.roles.some((current) => current.toLocaleLowerCase() === role.toLocaleLowerCase())) {
+      notifyProfile("That role is already on this profile.", "warning");
+      roleName.focus();
+      return;
+    }
+    const previousRoles = [...S.roles];
+    S.roles.push(role);
+    if (!save()) {
+      S.roles = previousRoles;
+      notifyProfile("Could not save this role. Check browser storage and try again.", "danger");
+      return;
+    }
+    roleComposer.reset();
+    roleComposer.hidden = true;
+    addRoleButton.setAttribute("aria-expanded", "false");
+    notifyProfile(`${role} role added.`, "success");
+    paint();
+    addRoleButton.focus();
+  });
+}
+
+// ── draggable quote ──
+(() => {
+  const q = $("quote"), card = $("card"); let drag = false;
+  q.addEventListener("pointerdown", (e) => { drag = true; q.setPointerCapture(e.pointerId); });
+  q.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const r = card.getBoundingClientRect();
+    S.qPositioned = true;
+    S.qx = Math.min(95, Math.max(5, ((e.clientX - r.left) / r.width) * 100));
+    S.qy = Math.min(95, Math.max(5, ((e.clientY - r.top) / r.height) * 100));
+    q.style.left = S.qx + "%"; q.style.top = S.qy + "%";
+  });
+  q.addEventListener("pointerup", () => { drag = false; save(); });
+  $("qReset").onclick = () => { S.qx = DEF.qx; S.qy = DEF.qy; S.qPositioned = false; save(); paint(); };
+})();
+
+// ── particles ──
+let fxRaf = 0, parts = [];
+function startFx() {
+  cancelAnimationFrame(fxRaf);
+  const cv = $("fx"), ctx = cv.getContext("2d");
+  const w = cv.width = cv.clientWidth, h = cv.height = cv.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  if (S.fx_t === "none" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const t = S.fx_t;
+  parts = Array.from({ length: S.fx_n }, () => ({ x: Math.random() * w, y: Math.random() * h, s: 1 + Math.random() * 2.5, v: 0.4 + Math.random() * 1.2, p: Math.random() * 6 }));
+  const tick = () => {
+    ctx.clearRect(0, 0, w, h);
+    parts.forEach((o) => {
+      o.p += 0.03;
+      if (t === "snow") { o.y += o.v; o.x += Math.sin(o.p) * 0.5; ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.beginPath(); ctx.arc(o.x, o.y, o.s, 0, 7); ctx.fill(); }
+      else if (t === "rain") { o.y += o.v * 6; ctx.strokeStyle = "rgba(150,190,255,.6)"; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(o.x - 2, o.y + 9); ctx.stroke(); }
+      else if (t === "embers") { o.y -= o.v; o.x += Math.sin(o.p); ctx.fillStyle = `rgba(255,${120 + o.s * 40 | 0},40,.85)`; ctx.fillRect(o.x, o.y, o.s, o.s); }
+      else { ctx.fillStyle = `rgba(255,255,200,${0.4 + Math.sin(o.p * 2) * 0.4})`; ctx.fillRect(o.x, o.y, o.s, o.s); }
+      if (o.y > h + 10) o.y = -10; if (o.y < -10) o.y = h + 10;
+    });
+    fxRaf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+addEventListener("resize", paint);
+
+// ── share code ──
+const enc = () => btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+$("copy").onclick = async () => { $("code").value = enc(); try { await navigator.clipboard.writeText($("code").value); } catch (_) { $("code").select(); } };
+$("load").onclick = () => {
+  try {
+    const o = JSON.parse(decodeURIComponent(escape(atob($("code").value.trim()))));
+    S = { ...DEF }; for (const k of Object.keys(DEF)) if (k in o && typeof o[k] === typeof DEF[k]) S[k] = o[k];
+    save(); location.reload();
+  } catch (_) { alert("That share code isn't valid."); }
+};
+$("reset").onclick = () => { if (confirm("Reset every profile-testing setting?")) { try { localStorage.removeItem(KEY); } catch (_) {} location.reload(); } };
+
+// -- library pickers: every item from /json (same catalogs as the store) --
+const MB = "https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/refs/heads/main/";
+const AVATARS = ["bleh","catcher","clown","clowninabox","dream","eye","eyes","glitched","me","purpleu","sleeppy","smile","starry","starwalk","yum"]
+  .map((n) => ({ label: n, url: `https://cdn.jsdelivr.net/gh/mcmattyobriore/yogurtyooo.github.io@main/system/images/profile/${n}.${n === "smile" ? "png" : "jpeg"}` }))
+  .concat(["skele.jpg","pumpkinPalLeft.gif","pumpkinPalRight.gif"].map((f) => ({ label: f.replace(/\.\w+$/, ""), url: `${MB}profile/halloween/${f}` })));
+const PICK = {
+  avatar:  { el: "pickAvatar",  key: "pimg",      input: "pimg",      none: "Saved",   items: AVATARS },
+  frame:   { el: "pickFrame",   key: "pframe",    input: "pframe",    none: "None",    items: [], contain: true },
+  wrapper: { el: "pickWrapper", key: "pwrapper",  input: "pwrapper",  none: "None",    items: [] },
+  banner:  { el: "pickBanner",  key: "bimgMedia", input: "bimgMedia", none: "Default", items: [] }
+};
+const getJson = async (name) => {
+  try { const r = await fetch(`../../json/${name}.json`, { cache: "no-cache" }); if (!r.ok) throw 0; return await r.json(); }
+  catch (_) { return null; }
+};
+function renderPick(kind) {
+  const cfg = PICK[kind], box = $(cfg.el); if (!box) return;
+  const q = (document.querySelector(`.pfilter[data-for="${kind}"]`)?.value || "").trim().toLowerCase();
+  const cur = (S[cfg.key] || "").trim();
+  box.innerHTML = "";
+  const none = document.createElement("button");
+  none.type = "button"; none.className = "tile none" + (!cur && !(kind === "avatar" && S.pimgRemoved) ? " sel" : ""); none.textContent = cfg.none;
+  none.onclick = () => choosePick(kind, { url: "" });
+  box.append(none);
+  cfg.items.filter((it) => !q || it.label.toLowerCase().includes(q)).forEach((it) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.title = it.label;
+    b.className = "tile" + (cfg.contain ? " contain" : "") + (it.url === cur ? " sel" : "");
+    const img = document.createElement("img");
+    img.loading = "lazy"; img.alt = it.label; img.src = it.thumb || it.url;
+    const name = document.createElement("b"); name.textContent = it.label;
+    b.append(img, name);
+    b.onclick = () => choosePick(kind, it);
+    box.append(b);
+  });
+}
+const renderAllPicks = () => Object.keys(PICK).forEach(renderPick);
+function choosePick(kind, it) {
+  const cfg = PICK[kind], url = it.url || "";
+  S[cfg.key] = url;
+  if (kind === "avatar") S.pimgRemoved = false;
+  if (kind === "banner") S.bimg = url;
+  if (kind === "frame" && it.scale) { S.pframeScale = it.scale; $("pframeScale").value = it.scale; }
+  $(cfg.input).value = url;
+  if (kind === "frame") $("pframe").placeholder = "blank = none";
+  save(); paint(); renderAllPicks();
+}
+$("removeProfileImage").addEventListener("click", () => {
+  const previousImage = S.pimg;
+  const previousRemoved = S.pimgRemoved;
+  S.pimg = "";
+  S.pimgRemoved = true;
+  if (!save()) {
+    S.pimg = previousImage;
+    S.pimgRemoved = previousRemoved;
+    notifyProfile("Could not remove the profile image. Check browser storage and try again.", "danger");
+    return;
+  }
+  $("pimg").value = "";
+  notifyProfile("Profile image removed. The placeholder is shown instead.", "success");
+  paint();
+  renderPick("avatar");
+});
+async function loadCatalogs() {
+  const [fr, wr, bn] = await Promise.all(["frames", "wrappers", "banners"].map(getJson));
+  const ext = (r) => r.ext || "png";
+  if (fr) PICK.frame.items = fr.filter((r) => r.id).map((r) => ({ label: r.name || r.id, url: `${MB}frames/${r.id}/splash.${ext(r)}`, scale: Math.round((+r.scale || 1.2) * 100) })).concat(LOCAL_FRAME_MEDIA);
+  if (wr) PICK.wrapper.items = wr.filter((r) => r.id).map((r) => ({ label: r.name || r.id, url: `${MB}wrappers/${r.id}/splash.${ext(r)}` }));
+  if (bn) PICK.banner.items = bn.filter((r) => r.src).map((r) => ({ label: r.name || r.identification, url: r.src, thumb: r.thumb || r.src }));
+  if (!(fr && wr && bn)) {
+    Object.entries({ frame: fr, wrapper: wr, banner: bn }).forEach(([k, v]) => { if (!v) PICK[k].items = PRESET_MEDIA[k].map((p) => ({ label: p.label, url: p.value })); });
+    $("catNote").textContent = "Couldn't read ../../json - showing a short built-in list. Open this page from system/pages/profile-testing/ to get every library item.";
+  }
+  renderAllPicks();
+}
+document.querySelectorAll(".pfilter").forEach((el) => el.addEventListener("input", () => renderPick(el.dataset.for)));
+["pimg","pframe","pwrapper","bimgMedia"].forEach((id) => $(id)?.addEventListener("input", renderAllPicks));
+populatePresets();
+loadCatalogs();
+bindPixelButtons();
+bindProfilePreview();
+loadAchievements();
+</script>
+</body>
+</html>
