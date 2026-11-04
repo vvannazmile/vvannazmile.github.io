@@ -1,6 +1,6 @@
-![WannaSmile Banner](https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/assets/images/pages/release/wannasmile-updated-banner.png)
+![WannaSmile Banner](https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/assets/images/pages/release/more-hollows.png)
 
-<h1 align="center">Wanna Smile: Expansion Update</h1>
+<h1 align="center">Wanna Smile: More Hollows</h1>
 
 <p align="center">
   <strong><em>"a cure to boredom"</em> -smiledemic</strong>
@@ -23,19 +23,9 @@
 </p>
 
 
-# V2.1.3
+# V2.3.0
 
-The Expansion Update is finalized, bringing the DM system to completion alongside smaller improvements designed to keep messaging reliable and prevent overload.
-
-The project has also been further modularized. System assets are now hosted externally through a Cloudflare Worker, reducing maintenance overhead and keeping the main website repository easier to manage. See the project documentation for more information.
-
-## Features
-
-- **DM System** — Contact users by username to send and receive direct messages.
-- **Factionism** — A development philosophy that divides the project into smaller, more manageable components for reliability across GitHub Pages, Cloudflare Workers, and local environments.
-- **New Themes & Widgets** — Access community-created tools through the library and customize your background with themes from the **Shop** page. Custom theme uploads are planned.
-- **15 Pages of Assets** — Explore over 1,125 assets, with 75 assets per page and new content continually being added.
-- **Frames & Customization** — Personalize your experience with profile frames, GIF packs, and a wide range of other customization options.
+More Hollows is finalized, new profile display system, finished global chat, and now using SQL rather than GS, while also Adding Trails and New loading methods.
 
 ### In the Works
 
