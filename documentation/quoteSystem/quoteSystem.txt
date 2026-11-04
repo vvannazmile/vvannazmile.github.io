@@ -1,0 +1,195 @@
+quotes.js — markup system reference
+=====================================
+all examples are copy-paste ready examples.
+syntax overview: [tag{prop:value; prop:value;}]content[/tag]
+                 [{prop:value;}]content[/]   ← shorthand styled span
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COLORS  (c:)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+basic color on a word:
+  hello [{c:#ff6ec7;}]world[/]!
+
+multiple colors in one quote:
+  [{c:#ff0000;}]red[/] [{c:#00ff00;}]green[/] [{c:#0099ff;}]blue[/]
+
+color + underline together:
+  [{c:#ffdd00; u:true;}]this is yellow AND underlined[/]
+
+hex, rgb, and named colors all work:
+  [{c:rgb(255,100,50);}]orange-ish[/]
+  [{c:tomato;}]named color[/]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UNDERLINE  (u:true)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+underline a section:
+  this word is [{u:true;}]underlined[/] and this is not.
+
+underline with color:
+  [{c:#a0f; u:true;}]purple underlined text[/]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TEXT ANIMATIONS  (type:)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+shake — rapid left-right jitter:
+  [{type:shake;}]EARTHQUAKE[/]
+
+wave — smooth up and down sine:
+  [{type:wave;}]floating on water...[/]
+
+jumpy — bouncy upward pop:
+  [{type:jumpy;}]EXCITED!!![/]
+
+tremble — twitchy micro-shake in all directions:
+  [{type:tremble;}]i am so scared rn[/]
+
+crawl — slow creeping vertical drift:
+  [{type:crawl;}]i am dying here...[/]
+
+animation + color together:
+  [{type:wave; c:#00cfff;}]wavy blue text[/]
+
+animation + color + underline:
+  [{type:shake; c:#ff4444; u:true;}]shaky red underline[/]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CUSTOM SPEED  (sp:base,hover,touch)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+overrides the 3 non-stopped scroll speeds for the entire quote.
+format is sp:BASE,HOVER,TOUCH  (pixels per second, mouse-down is always 0)
+
+very fast quote:
+  [{sp:300,150,60;}]I AM SPEED[/] and the rest of the quote inherits it too.
+
+very slow quote:
+  [{sp:30,15,5;}]slow and steady...[/]
+
+normal-ish with fine control:
+  [{sp:100,50,20;}]standard vibes[/]
+
+note: only the FIRST [{ }] block with sp: in the quote is used.
+      you can mix sp with other props freely:
+  [{sp:200,80,30; c:#ff0; type:jumpy;}]FAST JUMPY YELLOW[/]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANCHORS  [a]  (clickable links)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+plain anchor (hover effect only, no destination):
+  click [a]here[/a] for nothing.
+
+anchor with a URL — opens in new tab on click:
+  check out [a{src:https://example.com;}]this site[/a]!
+
+anchor with accent color on hover:
+  [a{src:https://example.com; ac:#ff6ec7;}]hover me pink[/a]
+
+anchor with underline:
+  [a{src:https://example.com; u:true;}]underlined link[/a]
+
+anchor with all props:
+  [a{src:https://youtube.com; ac:#ff0000; u:true;}]youtube[/a]
+
+anchor without src (decorative hover only):
+  [a{ac:#00ffcc;}]i glow teal on hover but go nowhere[/a]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUDIO BOX  [audbox]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+plays audio that pans left→right with the quote and fades in/out at edges.
+audio loops and stops automatically when the quote leaves the screen.
+
+basic audio at full volume:
+  [audbox{src:https://example.com/song.mp3;}]NOW PLAYING: something[/audbox]
+
+audio at 30% volume:
+  [audbox{vol:30%; src:https://cdn.jsdelivr.net/gh/dontevenjokelad/urlDump2@main/FlatBed%20Freestyle.mp3;}]I WOKE UP IN A NEW BUGATTI[/audbox]
+
+audio with a specific clip range (start and end in seconds):
+  [audbox{src:https://example.com/song.mp3; vol:60%; start:12; end:28;}]best part only[/audbox]
+
+audio with text styles on the label:
+  [audbox{src:https://example.com/song.mp3; vol:50%;}][{type:wave; c:#ff6ec7;}]♪ vibing ♪[/][/audbox]
+
+audio + anchor on the label (click to visit, audio plays while scrolling):
+  [audbox{src:https://example.com/song.mp3; vol:40%;}][a{src:https://soundcloud.com; ac:#ff5500;}]listen on soundcloud[/a][/audbox]
+
+props:
+  src:   — URL of the audio file (mp3, wav, ogg etc.)
+  vol:   — volume from 0% to 100%  (default 100%)
+  start: — start time in seconds   (default 0)
+  end:   — end time in seconds     (default: end of file)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STICKERS  :name:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+stickers are looked up in stickerPacksLibrary (defined outside this file).
+they try static first, then animated, then move to the next pack.
+
+basic sticker by name (system picks png or gif automatically):
+  hello :wave: world
+
+force a specific file extension:
+  :confetti.gif:
+  :star.png:
+
+sticker inside a path (subfolder):
+  :animals/cat:
+  :effects/sparkle.gif:
+
+stickers inline with text:
+  good morning :sun: have a great day :sparkle:
+
+sticker inside an animation span:
+  [{type:jumpy;}]:bunny:[/]
+
+if the sticker is not found in any pack, it falls back to the raw :name: text.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMBINING EVERYTHING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+colorful multi-style quote:
+  [{c:#ff6ec7;}]pink start[/] normal middle [{type:shake; c:#ffdd00;}]SHAKY YELLOW END[/]
+
+speed + color + sticker:
+  [{sp:180,70,25; c:#00cfff;}]zooming past :star: at [{c:#ff0;}]warp speed[/][/]
+
+  note: the outer [/ ] closes the sp+c span.
+  nesting: inner [{...}][/] spans close before the outer one.
+
+full complex quote:
+  :microphone: [audbox{src:https://example.com/beat.mp3; vol:45%;}][{type:wave; c:#b388ff;}]♪ now playing ♪[/] — [a{src:https://example.com; ac:#ff6ec7; u:true;}]open track[/a][/audbox] :headphones:
+
+quote with custom speed + anchor + animation:
+  [{sp:60,30,10;}]slowly scrolling... [a{src:https://example.com; ac:#0ff;}]click this[/a] while you wait :snail:[/]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK PROP REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  c:       color (hex, rgb, named)
+  u:       underline  — true / false
+  type:    animation  — shake / wave / jumpy / tremble / crawl
+  sp:      scroll speed override — base,hover,touch  (px/s)
+  ac:      accent color on hover (anchors only)
+  src:     URL — link destination (anchors) or audio file (audbox)
+  vol:     audio volume — 0% to 100%  (audbox only)
+  start:   audio clip start in seconds  (audbox only)
+  end:     audio clip end in seconds    (audbox only)

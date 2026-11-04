@@ -1,0 +1,59 @@
+<style>
+/* ==========================================
+   Disabled Header Pages ONLY
+   ========================================== */
+header a[href="system/pages/settings.html"],
+header a[href="system/pages/widgets.html"],
+header a[href="system/pages/news.html"],
+header a[href="system/pages/about.html"] {
+  pointer-events: none;
+  cursor: default;
+  color: gray;
+  opacity: 0.5;
+  text-decoration: none;
+  filter: grayscale(100%);
+}
+
+/* prevent hover effects ONLY on disabled links */
+header a[href="system/pages/settings.html"]:hover,
+header a[href="system/pages/widgets.html"]:hover,
+header a[href="system/pages/news.html"]:hover,
+header a[href="system/pages/about.html"]:hover {
+  color: gray;
+  text-decoration: none;
+}
+
+/* ==========================================
+   Footer Links (Discord disabled)
+   ========================================== */
+.footer-links a[href="https://discord.gg/4AKdJxJUMH"] {
+  pointer-events: none;
+  cursor: default;
+  color: gray;
+  opacity: 0.5;
+  text-decoration: none;
+  filter: grayscale(100%);
+}
+
+.footer-links a[href="https://discord.gg/4AKdJxJUMH"]:hover {
+  color: gray;
+  text-decoration: none;
+}
+
+/* ==========================================
+   Dashboard Menu (Credits disabled)
+   ========================================== */
+#dashboardMenu a[href="system/pages/credits.html"] {
+  pointer-events: none;
+  cursor: default;
+  color: gray;
+  opacity: 0.5;
+  text-decoration: none;
+  filter: grayscale(100%);
+}
+
+#dashboardMenu a[href="system/pages/credits.html"]:hover {
+  color: gray;
+  text-decoration: none;
+}
+</style>

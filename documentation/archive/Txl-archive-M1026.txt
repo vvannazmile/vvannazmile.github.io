@@ -1,0 +1,31 @@
+theme	identification	type	header-bg	quote-bg	main-bg	footer-bg	aside-bg	text-color	url-color	quote-color	accent-color	search-bg	search-text	search-placeholder	icon-bg	shadow-color	scroll-type	gifStates
+Classic	classic	ok	#111	#1d201f	https://raw.githubusercontent.com/wnasmile/wnasmile.github.io/main/assets/themes/classic/bg.png	#555	rgba(0, 0, 0, 0.95)	#fff	#fff	#fff	#ff4444	#f0f0f0	#333	#888	#333	rgba(0, 0, 0, 0.3)	deny	
+REDUX	redux	ok	https://raw.githubusercontent.com/01110010-00110101/themeify/main/redux/Redux-headerbg.png	https://raw.githubusercontent.com/01110010-00110101/themeify/main/redux/Redux-quotebg.png	https://raw.githubusercontent.com/01110010-00110101/themeify/main/redux/Redux-mainbg.png	#555	rgba(0, 0, 0, 0.95)	#fff	#fff	#fff	#ff4444	#f0f0f0	#333	#888	#333	rgba(0, 0, 0, 0.3)	allow	loading:https://raw.githubusercontent.com/wnasmile/wnasmile.github.io/main/assets/themes/redux/gifStates/loading.gif,128,128;|loaded:https://raw.githubusercontent.com/wnasmile/wnasmile.github.io/main/assets/themes/redux/gifStates/loaded.gif,128,128;|crash:https://raw.githubusercontent.com/wnasmile/wnasmile.github.io/main/assets/themes/redux/gifStates/crash.gif,128,128;|ded:https://raw.githubusercontent.com/wnasmile/wnasmile.github.io/main/assets/themes/redux/gifStates/ded.gif,128,128;|search:https://raw.githubusercontent.com/wnasmile/wnasmile.github.io/main/assets/themes/redux/gifStates/searching.gif,128,128;
+Selenite	selenite	ok			https://cdn.jsdelivr.net/gh/selenite-cc/selenite-old@main/themebgs/mountains_theme.jpg													
+GN-MATH	gn-math	ok																
+Graduation	graduation	ok	#ac00db	#e232aa	https://i.redd.it/kjektcn4myv91.png	#5717a6	#b3004d	#fff	#fff	#fff	#ff61c5	transparent	#fff	rgba(255, 255, 255, 0.5)	rgba(172, 0, 219, 0.6)	rgba(0, 0, 0, 0.3)		
+Vaper Wave	vaperwave	ok																
+Mountain	mountain	ok																
+the dropout	dropout	ok																
+mr west	mr-west	ok																
+igor	igor	ok																
+wolf	wolf	soon																
+bstrd	bstrd	soon																
+goblin	goblin	soon																
+Astrological	astrological	soon																
+RGP Pocket Sized	rgp-goat	soon																
+Slackerish	slackerish	soon																
+Hachiiki - Wilardzy sen	wilardzy	soon																
+Mcmatty Obriore	obriore	soon																
+Penguinified	penguinified	soon																
+Bg.Uhm	bguhm	soon																
+Sl4ckrr	sl4ckrr	soon																
+Breadbb	breadbb	soon																
+Bubbls	bubbls	soon																
+Fnaf 1	fnaf1	soon																
+Friday Night Funkin'	friday-night	soon																
+Yeezy Night Funkin'	yeezy-night	soon																
+YEEZUS (YNF)	yeezus-ynf	soon																
+Rhap5ody	rhapsody	soon																
+I AM MUSIC	i-am-music	soon																
+Stone Ocean	stone-ocean	soon																
