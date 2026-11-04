@@ -65,7 +65,7 @@ These are the contributors to WannaSmile. Check out their profiles and drop them
 
 <p align="center">
   <a href="https://github.com/vvannazmile/vvannazmile.github.io/graphs/contributors">
-![Contributors listed](https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/no.png)
+    <img src="https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/no.png" alt="Contributors listed">
   </a>
 </p>
 
