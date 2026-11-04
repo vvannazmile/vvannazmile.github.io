@@ -13,7 +13,6 @@ lol.txt
 *.ws
 
 # Internal docs (Apps Script sources, notes) and editor settings stay local.
-.documentation/
 .vscode/
 
 # Staged icons waiting to go up to the R2 bucket (icons3/, icons4/, …): the
