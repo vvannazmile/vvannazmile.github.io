@@ -1,5 +1,5 @@
 APR 28 2026 10:21
-script:https://script.google.com/macros/s/AKfycbzYEREHz2GuCYaHQzpvvHnUvvsRhIC8EbyhbCbrfQXkSu6gkP7kb5iIL5LY4WAF3rfFow/exec
+script:disabled (legacy endpoint removed)
 src:https://docs.google.com/spreadsheets/d/1mVlD8LNfr3SSwht4LTGA6OFh8hcJ7jwjIEK1XbCHz28/edit?gid=277428880#gid=277428880
 ------------------------------------------------------------------------------
 title	author	link	image	category	sub-category	status	page	type	animated

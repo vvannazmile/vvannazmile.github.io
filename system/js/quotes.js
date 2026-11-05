@@ -477,7 +477,7 @@ function parseQuotes(data) {
   const cacheOn = () => !!window.WS_DataCache?.enabled();
 
   function backgroundRefetch(force = false) {
-    if (fetchInFlight || (cacheOn() && !force)) return;
+    if (!window.WS_ENDPOINTS?.data || fetchInFlight || (cacheOn() && !force)) return;
     fetchInFlight = true;
     ticketReady()
       .then(() => fetchJSONRetry(() => bustCache(SHEETS_URL)))

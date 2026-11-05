@@ -7,8 +7,6 @@
 <link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/ico.png" />
 <title>WannaSmile | Discovery</title>
 
-<link rel="preconnect" href="https://script.google.com" crossorigin />
-<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
 <!-- Shoelace: achievement pop-ups (credits.js). -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" />
 <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/shoelace-autoloader.js"></script>
@@ -515,6 +513,7 @@ h1 {
   // ── Load ─────────────────────────────────────────────────────────────
   async function load() {
     $("grid").innerHTML = Array.from({ length: 8 }, () => `<div class="skeleton" aria-hidden="true"></div>`).join("");
+    if (!DATA) { $("grid").innerHTML = `<p class="empty">Discovery is disabled in this development build.</p>`; return; }
     if (!hasTicket) { $("grid").innerHTML = `<p class="empty">The library shows up once you have an access ticket.</p>`; return; }
     try {
       await ticketReady();

@@ -232,14 +232,13 @@ h1 {
 <script>
 "use strict";
 // ── Bulk icon download ─────────────────────────────────────────────────
-// Reads the same exported library file the homepage uses (items.json, kept in
-// the "ws_library" IndexedDB store by main.js, 3 h TTL), downloads each row's
+// Reads the same public library endpoint the homepage uses, downloads each row's
 // `image`, and zips them as   <zip-name>/<project-name>/<file>   — typically
 // wannasmile-icons/friday-night-funkin/icon.png. Nothing here touches the
 // engine: it only reads window.WS_ENDPOINTS.library.
 (() => {
-  const LIB_URL = window.WS_ENDPOINTS?.library || "https://ws.ankomstudios.com/library/items.json";
-  const LIB_TTL_MS = 3 * 60 * 60 * 1000;
+  const LIB_URL = window.WS_ENDPOINTS?.library;
+  const LIB_TTL_MS = 0;
   const LIB_DB = "ws_library";
   const IMG_EXT = /\.(?:png|jpe?g|webp|gif|avif|svg|ico|bmp)$/i;
   const IMG_URL = /\/([^\/?#]+)\/([^\/?#]+\.(?:png|jpe?g|webp|gif|avif|svg|ico|bmp))(?:[?#].*)?$/i;
@@ -292,6 +291,7 @@ h1 {
     } catch (_) {}
   }
   async function loadLibrary(force) {
+    if (!LIB_URL) throw new Error("The public library endpoint is not configured.");
     const saved = await libRead();
     const fresh = saved && Array.isArray(saved.items) && Date.now() - saved.savedAt < LIB_TTL_MS;
     if (fresh && !force) return saved.items;

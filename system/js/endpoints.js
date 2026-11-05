@@ -1,12 +1,8 @@
 "use strict";
 
 // ── Backend endpoints ──────────────────────────────────────────────────
-// The two Apps Script projects (.documentation/api/) and what each serves:
-//
-//   data  data.gs  quotes, sync, tickets, legacy asset feed
-//                  (quotes.js, ticket.js, legacy main.js feeds)
-//   mod   mod.gs   word filter, taken usernames — open, no ticket
-//                  (wordfilter.js)
+// Apps Script is disabled in this development build. Keep these endpoints
+// empty so optional legacy features cannot silently fall back to it.
 //
 // Catalogs (themes, banners, frames, gif packs, widgets, wrappers) come only
 // from the local JSON files under /json via WS_LocalCatalogs below.
@@ -15,17 +11,31 @@
 // window.WS_ENDPOINTS and the local catalog loader.
 //
 window.WS_ENDPOINTS = Object.freeze({
-  data: "https://script.google.com/macros/s/AKfycbwTLT4Hv7ThVJ2C4UlUyw7IJ7joif706yTLAkHMV5kFFHs2DBLTC9iw34YAL-BIbmwQ/exec",
-  mod:  "https://script.google.com/macros/s/AKfycbyorR1RSI3-aYv91IIobUxMmNv8HKMyYvNKhwgR27AXetGROjkE_eYgBNyW5hwyPh_w/exec",
+  data: "",
+  mod: "",
   // Public SQL (D1) library used for the homepage and DevBuild assets.
   // One exported JSON file ({ updated, items }) rebuilt by the ankom-api Worker
-  // from D1 and served straight from R2, so opening a tab never reads D1.
-  // main.js keeps its own copy for 3 hours (see loadLibrarySnapshot).
-  library: "https://ws.ankomstudios.com/library/items.json",
+  // from D1. The endpoint versions its edge cache against the R2 object ETag.
+  library: "https://api.ankomstudios.com/library/items",
   // Your Cloudflare Worker HTML-fetch endpoint used by "qwerty" assets.
   // This fetches the initial HTML document only; it is not a WebSocket relay.
   fetch: "https://ankom-url-api.ankomstudios.workers.dev/fetch?url=",
 });
+
+// Defense in depth: no site code or stale saved URL may call an Apps Script
+// deployment while this dev build has those services turned off.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = (input, init) => {
+  const rawUrl = input instanceof Request ? input.url : input;
+  const url = new URL(rawUrl, location.href);
+  if (
+    url.hostname === "script.google.com" ||
+    url.hostname === "script.googleusercontent.com"
+  ) {
+    return Promise.reject(new Error("Apps Script requests are disabled in this build."));
+  }
+  return nativeFetch(input, init);
+};
 
 window.WS_LocalCatalogs = (() => {
   const files = Object.freeze({
@@ -59,8 +69,8 @@ window.WS_LocalCatalogs = (() => {
   return Object.freeze({ load });
 })();
 
-// Temporary public-library transition: keep ticket APIs available, but don't
-// require ticket onboarding to browse the public SQL asset library.
+// The public SQL library is open; this development build does not gate it on
+// the disabled ticket service.
 window.WS_TICKETS_ENABLED = false;
 
 // ── General media (mediabaseWS) ────────────────────────────────────────

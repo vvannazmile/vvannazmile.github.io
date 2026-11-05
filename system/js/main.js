@@ -164,9 +164,8 @@ window.addEventListener("load", () => {
     window.config = {
       fallbackImage:    "https://raw.githubusercontent.com/01110010-00110101/01110010-00110101.github.io/main/system/images/404_blank.png",
       fallbackLink:     "https://wnasmile.github.io./source/dino/",
-      // index.html's <head> sets WS_SHEET_URL and starts the asset fetch
-      // early; this literal is only the fallback for pages that don't.
-      sheetUrl:         window.WS_SHEET_URL || window.WS_ENDPOINTS.data,
+      // The public library is the only asset feed in this build.
+      sheetUrl:         window.WS_SHEET_URL || window.WS_ENDPOINTS.library,
       devBuildUrl:      window.WS_ENDPOINTS.library || "",
     };
 
@@ -3090,7 +3089,7 @@ window.addEventListener("load", () => {
       const saved = await cache.read("searchquotes");
       if (Array.isArray(saved)) return (_searchQuotes = saved);
     }
-    if (!window.WS_Ticket?.approved?.()) return (_searchQuotes = []);
+    if (!window.WS_Ticket?.approved?.() || !window.WS_ENDPOINTS?.data) return (_searchQuotes = []);
     try {
       const url = `${window.WS_ENDPOINTS.data}?type=searchQuotes`;
       await ticketReady();
@@ -3275,12 +3274,13 @@ window.addEventListener("load", () => {
   // ── Exported library file (items.json) ───────────────────────────────
   // The Worker exports the whole library to ONE JSON file ({ updated, items })
   // in R2, so a tab never pages through the database. This keeps a copy in
-  // IndexedDB (not localStorage: it is ~700 KB) and reuses it for 3 hours
-  // before asking for the file again. R (refetch) always asks again. If the
+  // IndexedDB (not localStorage: it is ~700 KB) for offline recovery.
+  // Check the live endpoint on every load. If the
   // file can't be reached, an older saved copy is used rather than a crash.
-  const LIB_TTL_MS = 3 * 60 * 60 * 1000;
+  const LIB_TTL_MS = 0;
   const LIB_DB = "ws_library";
   const _isSnapshotFeed = (url) => {
+    if (url === window.WS_ENDPOINTS?.library) return true;
     try { return /\.json$/i.test(new URL(url, location.href).pathname); } catch (_) { return false; }
   };
 
@@ -3314,7 +3314,7 @@ window.addEventListener("load", () => {
     } catch (_) {}
   }
 
-  async function loadLibrarySnapshot(url) {
+  async function loadLibrarySnapshot(url, prefetched) {
     const saved = await _libRead(url);
     const fresh = saved && Array.isArray(saved.items) && Date.now() - saved.savedAt < LIB_TTL_MS;
     if (fresh && !window._forceRefetch) return saved.items;
@@ -3322,9 +3322,12 @@ window.addEventListener("load", () => {
     try {
       // No cache-buster: the file is cacheable. "no-cache" makes the browser
       // revalidate (a cheap 304 when nothing changed); "reload" is for R.
-      const res = await fetch(url, { cache: window._forceRefetch ? "reload" : "no-cache" });
-      if (!res.ok) throw new Error(`HTTP ${res.status} loading the library file`);
-      const body = await res.json();
+      let body = prefetched;
+      if (!body) {
+        const res = await fetch(url, { cache: window._forceRefetch ? "reload" : "no-cache" });
+        if (!res.ok) throw new Error(`HTTP ${res.status} loading the library file`);
+        body = await res.json();
+      }
       if (!Array.isArray(body?.items)) throw new Error("Library file has no items array");
       _libWrite(url, { savedAt: Date.now(), updated: body.updated || "", items: body.items });
       return body.items;
@@ -3339,7 +3342,7 @@ window.addEventListener("load", () => {
 
   async function fetchSqlAssets(feedUrl, firstPage) {
     if (_isSnapshotFeed(feedUrl)) {
-      return (await loadLibrarySnapshot(feedUrl)).map(_sqlItemToRow);
+      return (await loadLibrarySnapshot(feedUrl, firstPage)).map(_sqlItemToRow);
     }
     const rows = [];
     const fetchPage = async (page) => {

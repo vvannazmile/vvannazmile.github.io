@@ -56,8 +56,10 @@
   // ticket itself isn't approved ("pending", "unknown", "missing", ...), or
   // null when the server couldn't be reached.
   async function ask() {
+    const endpoint = window.WS_ENDPOINTS?.data;
+    if (!endpoint) return null;
     try {
-      const res = await fetch(bustCache(`${window.WS_ENDPOINTS.data}?type=contrib`), { cache: "no-store" });
+      const res = await fetch(bustCache(`${endpoint}?type=contrib`), { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = await res.json();
       if (j && j.listed === true) return { listed: true };

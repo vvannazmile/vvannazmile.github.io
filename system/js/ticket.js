@@ -117,6 +117,7 @@
   // for good. On timeout this throws, and callers already treat a throw as
   // "couldn't reach the server".
   async function api(params, body, timeoutMs = 20000) {
+    if (!API_URL) throw new Error("Ticket services are disabled in this build.");
     const qs  = new URLSearchParams({ ...params, _: Date.now() }).toString();
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);

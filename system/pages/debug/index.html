@@ -10,10 +10,6 @@
 <!-- Debug layout editor: must be set before any other script runs. -->
 <script>window.__WS_DEBUG = true;</script>
 
-<!-- Asset data comes from Apps Script, which redirects to
-     script.googleusercontent.com — open both connections right away. -->
-<link rel="preconnect" href="https://script.google.com" crossorigin />
-<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
 <!-- Images, themes and the loader gif come from raw.githubusercontent.com; the
      CDN hosts serve Shoelace and Font Awesome. Warm those connections up too. -->
 <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
@@ -23,30 +19,24 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" /></noscript>
 
-<!-- Word filter (nickname/ticket checks): no DOM needed, so it loads here and
-     starts fetching its list straight away. See wordfilter.js. -->
-<!-- Always fetched fresh: a cached copy would keep posting to an old deployment URL. -->
+<!-- The disabled word-filter backend is configured here with the other endpoints. -->
+<!-- Apps Script services are disabled for this development build. -->
 <script>document.write('<script src="system/js/endpoints.js?_=' + Date.now() + '"><\/script>');</script>
 <script src="system/js/wordfilter.js"></script>
 
 <script>
-// Start the asset fetch now, from the <head>, instead of waiting for every
+// Start the public SQL asset fetch now, from the <head>, instead of waiting for every
 // stylesheet, CDN script and main.js to download and DOMContentLoaded to
 // fire. main.js's loadAssets() picks this promise up (once) if the URL
 // matches, so the JSON is usually already parsed by the time it needs it.
 (function () {
-  window.WS_SHEET_URL = window.WS_ENDPOINTS.data;   // endpoints.js
+  window.WS_SHEET_URL = window.WS_ENDPOINTS.library;   // endpoints.js
   try {
-    // Only for a browser whose access ticket is already approved (see
-    // ticket.js); everyone else waits at the ticket gate, and the backend
-    // would refuse the request anyway.
-    var ticket = localStorage.getItem("ws_ticket_id");
-    if (!ticket || localStorage.getItem("ws_ticket_status") !== "approved") { window.__wsAssetsPrefetch = null; return; }
-    // (No data-cache check here: this page always reads the live sheet, see
-    // datacache.js, so the early request is always the one that gets used.)
     var url = window.WS_SHEET_URL;
-    var key = localStorage.getItem("ws_ticket_key");
-    var p = fetch(url + (url.indexOf("?") === -1 ? "?" : "&") + "ticket=" + encodeURIComponent(ticket) + (key ? "&key=" + encodeURIComponent(key) : "") + "&_=" + Date.now(), { cache: "no-store" })
+    if (!url) { window.__wsAssetsPrefetch = null; return; }
+    var requestUrl = new URL(url, location.href);
+    requestUrl.searchParams.set("_", String(Date.now()));
+    var p = fetch(requestUrl.href, { cache: "no-store" })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();

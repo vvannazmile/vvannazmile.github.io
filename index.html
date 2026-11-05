@@ -7,11 +7,8 @@
 <link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/ico.png"/>
 <title>WannaSmile | Home</title>
 
-<!-- Apps Script still serves ticketed user data; the public asset library
-     is fetched from the SQL Worker. -->
-<link rel="preconnect" href="https://script.google.com" crossorigin />
-<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
-<link rel="preconnect" href="https://ankom-api.ankomstudios.workers.dev" crossorigin />
+<!-- Public library data is served by the SQL Worker. -->
+<link rel="preconnect" href="https://api.ankomstudios.com" crossorigin />
 <!-- Images, themes and the loader gif come from raw.githubusercontent.com; the
      CDN hosts serve Shoelace and Font Awesome. Warm those connections up too. -->
 <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
@@ -21,8 +18,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" /></noscript>
 
-<!-- Word filter (nickname/ticket checks): no DOM needed, so it loads here and
-     starts fetching its list straight away. See wordfilter.js. -->
+<!-- The disabled word-filter endpoint is configured before optional site scripts. -->
 <script src="system/js/endpoints.js"></script>
 <script src="system/js/wordfilter.js"></script>
 
@@ -34,8 +30,6 @@
     window._devBuildArmedAtLoad = localStorage.getItem("ws_devBuildArmed") === "true";
     var url = window.WS_SHEET_URL;
     var requestUrl = new URL(url, location.href);
-    requestUrl.searchParams.set("limit", "200");
-    requestUrl.searchParams.set("page", "1");
     requestUrl.searchParams.set("_", String(Date.now()));
     var controller = new AbortController();
     var timeout = setTimeout(function () { controller.abort(); }, 12000);

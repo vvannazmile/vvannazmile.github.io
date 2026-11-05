@@ -281,6 +281,7 @@
     if (!confirm(`Write ${total} assets across ${layout.length} pages to the sheet?\n(The backend keeps a backup tab first.)`)) return;
 
     const url = window.WS_ENDPOINTS.data;
+    if (!url) { toast("The data backend is disabled in this build."); return; }
     busy = true; paint("Checking backend...");
     try {
       // Which build is behind the DATA url? (type=build needs no ticket.) If the
