@@ -22,11 +22,13 @@ const PROFILE_IMAGES = [
 // uploaded one) under "pfpFrame"; an empty value means no frame.
 const FRAME_KEY     = "pfpFrame";
 const FRAME_SCALE_KEY = "pfpFrameScale";
+const FRAME_X_KEY = "pfpFrameX";
+const FRAME_Y_KEY = "pfpFrameY";
 const AVATAR_SIZE_KEY = "pfpAvatarSize";
 const AVATAR_SHAPE_KEY = "pfpShape";
 const PROFILE_LAYOUT_KEY = "pfpLayout";
 const FRAME_SCALE_DEFAULT = 1.2;
-const FRAME_SCALE_MIN = 1;
+const FRAME_SCALE_MIN = 0.8;
 const FRAME_SCALE_MAX = 2;
 const AVATAR_SIZE_DEFAULT = 135;
 const AVATAR_SIZE_MIN = 80;
@@ -140,7 +142,7 @@ function bannerUrl(src) {
   const moved = window.toMediabase(src);
   if (moved !== src) return moved;
   if (src.startsWith(BANNER_SITE)) return new URL(src.slice(BANNER_SITE.length), SITE_ROOT).href;
-  return new URL(src, location.href).href;
+  return new URL(src, SITE_ROOT).href;
 }
 
 function readBannerFile(file) {
@@ -196,6 +198,8 @@ function savedProfile() {
     align:     PFP_ALIGNS.includes(localStorage.getItem(PFP_ALIGN_KEY)) ? localStorage.getItem(PFP_ALIGN_KEY) : "left",
     frame:     localStorage.getItem(FRAME_KEY) || "",
     frameScale: boundedNumber(localStorage.getItem(FRAME_SCALE_KEY), FRAME_SCALE_MIN, FRAME_SCALE_MAX, FRAME_SCALE_DEFAULT),
+    frameX:    boundedNumber(localStorage.getItem(FRAME_X_KEY), -80, 80, 0),
+    frameY:    boundedNumber(localStorage.getItem(FRAME_Y_KEY), -80, 80, 0),
     avatarSize: boundedNumber(localStorage.getItem(AVATAR_SIZE_KEY), AVATAR_SIZE_MIN, AVATAR_SIZE_MAX, AVATAR_SIZE_DEFAULT),
     avatarShape: AVATAR_SHAPES.includes(localStorage.getItem(AVATAR_SHAPE_KEY)) ? localStorage.getItem(AVATAR_SHAPE_KEY) : "circle",
     layout:    PROFILE_LAYOUTS.includes(localStorage.getItem(PROFILE_LAYOUT_KEY)) ? localStorage.getItem(PROFILE_LAYOUT_KEY) : "horizontal",
@@ -204,7 +208,7 @@ function savedProfile() {
   };
 }
 
-const _pending = { pic: undefined, name: undefined, banner: undefined, pixelated: undefined, align: undefined, frame: undefined, frameScale: undefined, avatarSize: undefined, avatarShape: undefined, layout: undefined, wrapper: undefined, wrapperOpacity: undefined };
+const _pending = { pic: undefined, name: undefined, banner: undefined, pixelated: undefined, align: undefined, frame: undefined, frameScale: undefined, frameX: undefined, frameY: undefined, avatarSize: undefined, avatarShape: undefined, layout: undefined, wrapper: undefined, wrapperOpacity: undefined };
 
 function resetPending() {
   Object.keys(_pending).forEach(k => { _pending[k] = undefined; });
@@ -254,7 +258,13 @@ function paintPic(img, src, pixelated, crisp) {
 }
 
 // Shows a frame in an <img> that sits above the picture ("" = none).
-function paintFrame(img, src, scale) { window.WSFrames.paint(img, src, scale); }
+function paintFrame(img, src, scale, x = localStorage.getItem(FRAME_X_KEY), y = localStorage.getItem(FRAME_Y_KEY)) {
+  window.WSFrames.paint(img, src);
+  if (!img) return;
+  const resolvedScale = boundedNumber(scale, FRAME_SCALE_MIN, FRAME_SCALE_MAX, FRAME_SCALE_DEFAULT);
+  img.style.setProperty("--pf-frame-scale", String(resolvedScale));
+  img.style.translate = `${boundedNumber(x, -80, 80, 0)}px ${boundedNumber(y, -80, 80, 0)}px`;
+}
 
 function paintAvatarSize(size) {
   const clamped = boundedNumber(size, AVATAR_SIZE_MIN, AVATAR_SIZE_MAX, AVATAR_SIZE_DEFAULT);
@@ -304,7 +314,7 @@ function renderProfileCard() {
 
   paintBanner(currentValue("banner"));
   paintPic(document.getElementById("profilePreview"), pic, pixel, true);
-  paintFrame(document.getElementById("profileFramePreview"), currentValue("frame"), frameScale);
+  paintFrame(document.getElementById("profileFramePreview"), currentValue("frame"), frameScale, currentValue("frameX"), currentValue("frameY"));
   paintAvatarSize(avatarSize);
   paintAvatarShape(avatarShape);
   window.WSWrappers.paint(document.getElementById("profileWrapper"), currentValue("wrapper"), currentValue("wrapperOpacity"));
@@ -333,6 +343,12 @@ function renderProfileCard() {
   const frameScaleValue = document.getElementById("profileFrameScaleValue");
   if (frameScaleInput) frameScaleInput.value = String(Math.round(frameScale * 100));
   if (frameScaleValue) frameScaleValue.value = `${Math.round(frameScale * 100)}%`;
+  [["X", "frameX"], ["Y", "frameY"]].forEach(([axis, key]) => {
+    const input = document.getElementById(`profileFrame${axis}`);
+    const value = document.getElementById(`profileFrame${axis}Value`);
+    if (input) input.value = String(currentValue(key));
+    if (value) value.value = `${currentValue(key)} px`;
+  });
   const avatarSizeInput = document.getElementById("profileAvatarSize");
   const avatarSizeValue = document.getElementById("profileAvatarSizeValue");
   if (avatarSizeInput) avatarSizeInput.value = String(avatarSize);
@@ -362,6 +378,45 @@ function renderProfileCard() {
 
   const save = document.getElementById("profileSaveBtn");
   if (save) save.hidden = !profileDirty();
+  renderProfileDetails();
+}
+
+function renderProfileDetails() {
+  const details = document.getElementById("profileDetails");
+  const bioBlock = document.getElementById("profileBioBlock");
+  const bioText = document.getElementById("profileBioText");
+  const rolesBlock = document.getElementById("profileRolesBlock");
+  const rolesList = document.getElementById("profileRolesList");
+  if (!details || !bioBlock || !bioText || !rolesBlock || !rolesList) return;
+
+  let profile = null;
+  try {
+    const raw = localStorage.getItem("ws_profile_style_main");
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("The saved profile details are invalid.");
+      }
+      profile = parsed;
+    }
+  } catch (error) {
+    console.error("Could not read the saved profile details.", error);
+  }
+
+  const bio = typeof profile?.bioText === "string" ? profile.bioText.trim() : "";
+  const roles = Array.isArray(profile?.roles)
+    ? profile.roles.filter(role => typeof role === "string" && role.trim()).slice(0, 12)
+    : [];
+  bioText.textContent = bio;
+  bioBlock.hidden = !bio;
+  rolesList.replaceChildren(...roles.map(role => {
+    const tag = document.createElement("span");
+    tag.className = "pf-profile-role";
+    tag.textContent = role;
+    return tag;
+  }));
+  rolesBlock.hidden = roles.length === 0;
+  details.hidden = !bio && roles.length === 0;
 }
 
 // The header avatar + dashboard names, from SAVED values only.
@@ -383,9 +438,10 @@ function loadProfile() {
   renderProfileCard();
 }
 
-function saveProfile({ pic, name, pixelated, banner, align, frame, frameScale, avatarSize, avatarShape, layout, wrapper, wrapperOpacity } = {}) {
+function saveProfile({ pic, name, pixelated, banner, align, frame, frameScale, frameX, frameY, avatarSize, avatarShape, layout, wrapper, wrapperOpacity } = {}) {
   let picSaved = true;
   let wrapperSaved = true;
+  let frameSaved = true;
   let profileSettingsSaved = true;
   if (wrapper !== undefined) {
     try { if (wrapper) localStorage.setItem(WRAPPER_KEY, wrapper); else localStorage.removeItem(WRAPPER_KEY); }
@@ -405,6 +461,7 @@ function saveProfile({ pic, name, pixelated, banner, align, frame, frameScale, a
       if (frame) localStorage.setItem(FRAME_KEY, frame);
       else localStorage.removeItem(FRAME_KEY);
     } catch (_) {
+      frameSaved = false;
       if (typeof showToast === "function") showToast("❌ That frame is too big to save. Try a smaller image.");
     }
   }
@@ -426,6 +483,8 @@ function saveProfile({ pic, name, pixelated, banner, align, frame, frameScale, a
   }
   const profileSettings = [
     [frameScale, FRAME_SCALE_KEY, value => String(boundedNumber(value, FRAME_SCALE_MIN, FRAME_SCALE_MAX, FRAME_SCALE_DEFAULT)), "frame size"],
+    [frameX, FRAME_X_KEY, value => String(Math.round(boundedNumber(value, -80, 80, 0))), "frame position"],
+    [frameY, FRAME_Y_KEY, value => String(Math.round(boundedNumber(value, -80, 80, 0))), "frame position"],
     [avatarSize, AVATAR_SIZE_KEY, value => String(Math.round(boundedNumber(value, AVATAR_SIZE_MIN, AVATAR_SIZE_MAX, AVATAR_SIZE_DEFAULT))), "picture size"],
     [avatarShape, AVATAR_SHAPE_KEY, value => AVATAR_SHAPES.includes(value) ? value : "circle", "picture shape"],
     [layout, PROFILE_LAYOUT_KEY, value => PROFILE_LAYOUTS.includes(value) ? value : "horizontal", "profile layout"],
@@ -441,8 +500,31 @@ function saveProfile({ pic, name, pixelated, banner, align, frame, frameScale, a
   if (name     !== undefined) localStorage.setItem("nickname",      name);
   if (pixelated !== undefined) localStorage.setItem("pfpPixelated", pixelated ? "true" : "false");
   loadProfile();
-  return picSaved && wrapperSaved && profileSettingsSaved;
+  return picSaved && wrapperSaved && frameSaved && profileSettingsSaved;
 }
+
+window.WS_ProfileApply = (profile) => {
+  const radius = boundedNumber(profile.pfpRadius, 0, 50, 50);
+  const avatarShape = radius >= 49 ? "circle" : radius >= 20 ? "rounded" : "square";
+  const saved = saveProfile({
+    pic: profile.pimgRemoved ? DEFAULT_PIC : (profile.pimg || DEFAULT_PIC),
+    name: profile.nm || "",
+    pixelated: Number(profile.pixelate) > 0,
+    banner: profile.bimg || profile.bimgMedia || "",
+    align: PFP_ALIGNS.includes(profile.pfpAlign) ? profile.pfpAlign : "center",
+    frame: profile.pframe || "",
+    frameScale: boundedNumber(Number(profile.pframeScale) / 100, FRAME_SCALE_MIN, FRAME_SCALE_MAX, FRAME_SCALE_DEFAULT),
+    frameX: boundedNumber(profile.pframeX, -80, 80, 0),
+    frameY: boundedNumber(profile.pframeY, -80, 80, 0),
+    avatarSize: profile.pfpSize,
+    avatarShape,
+    layout: profile.pfpAlign === "center" ? "vertical" : "horizontal",
+    wrapper: profile.pwrapper || "",
+    wrapperOpacity: String(profile.pwrapperOpacity ?? 100),
+  });
+  paintFrame(headerFrameEl(), profile.pframe || "", Number(profile.pframeScale) / 100);
+  return saved;
+};
 
 // ── Advanced editing ───────────────────────────────────────────────────
 const ADV_EDIT_KEY = "pfAdvancedEdit";
@@ -898,6 +980,7 @@ function nameEditing() {
 }
 
 function startNameEdit() {
+  if (!document.getElementById("profileOverlay")?.classList.contains("profile-editing")) return;
   const input = document.getElementById("usernameInput");
   const shown = document.getElementById("profileOverlayUsername");
   const btn   = document.getElementById("editNameBtn");
@@ -945,14 +1028,38 @@ function endNameEdit(commit) {
 }
 
 // ── Open / close ───────────────────────────────────────────────────────
+function setProfileEditing(editing) {
+  const overlay = document.getElementById("profileOverlay");
+  if (!overlay) return;
+  overlay.classList.toggle("profile-editing", editing);
+  [
+    document.getElementById("profileOverlayTitle"),
+    document.getElementById("profileAvatarBtn"),
+    document.getElementById("profileBanner"),
+    document.getElementById("editNameBtn"),
+  ].forEach((control) => {
+    if (!control) return;
+    control.tabIndex = editing ? 0 : -1;
+    control.setAttribute("aria-disabled", String(!editing));
+  });
+  const cancel = document.getElementById("profileEditCancel");
+  if (cancel) cancel.hidden = !editing;
+  const save = document.getElementById("profileSaveBtn");
+  if (save) save.hidden = !editing;
+  renderProfileCard();
+  if (save) save.hidden = !editing;
+}
+
 function openProfileOverlay() {
   window.WS_WordFilter?.load();
   resetPending();
   loadProfile();
   const overlay = document.getElementById("profileOverlay");
   if (!overlay) return;
+  setProfileEditing(false);
   overlay.classList.add("visible");
-  document.getElementById("profileOverlayPanel")?.focus({ preventScroll: true });
+  overlay.setAttribute("aria-hidden", "false");
+  document.getElementById("profileViewEdit")?.focus({ preventScroll: true });
 }
 
 function closeProfileOverlay() {
@@ -965,7 +1072,9 @@ function closeProfileOverlay() {
   document.getElementById("cropCancel")?.click();
   document.getElementById("bannerCropCancel")?.click();
   resetPending();
+  setProfileEditing(false);
   overlay.classList.remove("visible");
+  overlay.setAttribute("aria-hidden", "true");
   loadProfile();
   if (dropped && typeof showToast === "function") showToast("Unsaved profile changes were discarded.");
 }
@@ -986,7 +1095,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const pfpEl = $id("pfp");
   if (pfpEl) {
     pfpEl.style.cursor = "pointer";
-    pfpEl.addEventListener("click", (e) => { e.preventDefault(); openProfileOverlay(); });
+    pfpEl.addEventListener("click", (e) => { e.preventDefault(); window.openProfileOverlay(); });
     const parent = pfpEl.closest("a");
     if (parent) {
       parent.removeAttribute("href");
@@ -999,6 +1108,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const overlay = $id("profileOverlay");
   if (!overlay) return;
 
+  $id("profileViewEdit")?.addEventListener("click", () => {
+    setProfileEditing(true);
+    $id("profileGearBtn")?.focus({ preventScroll: true });
+  });
+  $id("profileViewClose")?.addEventListener("click", closeProfileOverlay);
+  $id("profileEditCancel")?.addEventListener("click", () => {
+    closeProfileOverlay();
+  });
   $id("profileOverlayClose")?.addEventListener("click", closeProfileOverlay);
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeProfileOverlay(); });
 
@@ -1012,6 +1129,10 @@ window.addEventListener("DOMContentLoaded", () => {
       if (nameEditing()) { endNameEdit(false); $id("editNameBtn")?.focus(); return; }
       if (setGearMenu(false)) { $id("profileGearBtn")?.focus(); return; }
       if (closeAllLibraries()) { $id("profileOverlayPanel")?.focus({ preventScroll: true }); return; }
+      if (overlay.classList.contains("profile-editing")) {
+        $id("profileEditCancel")?.click();
+        return;
+      }
       closeProfileOverlay();
       return;
     }
@@ -1032,6 +1153,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Gear menu
   $id("profileGearBtn")?.addEventListener("click", (e) => {
+    if (!overlay.classList.contains("profile-editing")) return;
     e.stopPropagation();
     setGearMenu($id("profileGearMenu").hidden);
   });
@@ -1039,6 +1161,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!e.target.closest?.(".pf-gear-wrap")) setGearMenu(false);
   });
   $id("profileGearMenu")?.addEventListener("click", (e) => {
+    if (!overlay.classList.contains("profile-editing")) return;
     const item = e.target.closest("button");
     if (!item) return;
     if (item.dataset.openLibrary) { setGearMenu(false); openLibrary(item.dataset.openLibrary); }
@@ -1056,10 +1179,15 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // Libraries open from the avatar / the banner too.
-  $id("profileAvatarBtn")?.addEventListener("click", () => openLibrary("pfp"));
+  $id("profileAvatarBtn")?.addEventListener("click", () => {
+    if (overlay.classList.contains("profile-editing")) openLibrary("pfp");
+  });
   const banner = $id("profileBanner");
-  banner?.addEventListener("click", () => openLibrary("banner"));
+  banner?.addEventListener("click", () => {
+    if (overlay.classList.contains("profile-editing")) openLibrary("banner");
+  });
   banner?.addEventListener("keydown", (e) => {
+    if (!overlay.classList.contains("profile-editing")) return;
     if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
     openLibrary("banner");
@@ -1069,6 +1197,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // "Edit your profile" opens both libraries (or closes both if they're open).
   $id("profileOverlayTitle")?.addEventListener("click", (e) => {
+    if (!overlay.classList.contains("profile-editing")) return;
     const bothOpen = !libraryEl("pfp").hidden && !libraryEl("banner").hidden;
     if (bothOpen) { closeAllLibraries(); }
     else { openLibrary("banner"); openLibrary("pfp"); }
@@ -1082,6 +1211,12 @@ window.addEventListener("DOMContentLoaded", () => {
   $id("profileFrameScale")?.addEventListener("input", (e) => setPending("frameScale", Number(e.target.value) / 100));
   $id("profileAvatarSize")?.addEventListener("input", (e) => setPending("avatarSize", Number(e.target.value)));
   $id("resetFrameScaleBtn")?.addEventListener("click", () => setPending("frameScale", FRAME_SCALE_DEFAULT));
+  $id("profileFrameX")?.addEventListener("input", (e) => setPending("frameX", Number(e.target.value)));
+  $id("profileFrameY")?.addEventListener("input", (e) => setPending("frameY", Number(e.target.value)));
+  $id("resetFramePositionBtn")?.addEventListener("click", () => {
+    setPending("frameX", 0);
+    setPending("frameY", 0);
+  });
   $id("resetAvatarSizeBtn")?.addEventListener("click", () => setPending("avatarSize", AVATAR_SIZE_DEFAULT));
   $id("profileLayoutToggle")?.addEventListener("click", () =>
     setPending("layout", currentValue("layout") === "vertical" ? "horizontal" : "vertical"));
@@ -1392,6 +1527,8 @@ window.addEventListener("DOMContentLoaded", () => {
       align:     _pending.align,
       frame:     _pending.frame,
       frameScale: _pending.frameScale,
+      frameX:    _pending.frameX,
+      frameY:    _pending.frameY,
       avatarSize: _pending.avatarSize,
       avatarShape: _pending.avatarShape,
       layout:    _pending.layout,
@@ -1400,7 +1537,8 @@ window.addEventListener("DOMContentLoaded", () => {
     });
     if (!saved) return;
     resetPending();
+    setProfileEditing(false);
     if (typeof showToast === "function") showToast("✅ Profile saved.");
-    closeProfileOverlay();
+    $id("profileViewEdit")?.focus({ preventScroll: true });
   });
 });

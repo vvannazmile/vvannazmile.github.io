@@ -3,7 +3,30 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script src="system/js/desktop.js"></script>
+<script>
+// This file is written for system/pages/index/. Anywhere else (e.g. the site
+// root, beside system/) a <base> makes every relative URL resolve as if it
+// were there, so the same file runs in both places. WS_SITE_ROOT is the
+// directory that holds system/ and assets/.
+(function () {
+  var home = "system/pages/index/";
+  var inHome = /\/system\/pages\/index\/(?:index\.html)?$/.test(location.pathname);
+  var base = inHome ? new URL(".", location.href).href : new URL(home, location.href).href;
+  window.WS_SITE_ROOT = new URL("../../../", base).href;
+  if (inHome) return;
+  var el = document.createElement("base");
+  el.href = base;
+  document.head.insertBefore(el, document.head.firstChild);
+  // With a <base>, href="#x" would point at the base page, so keep in-page anchors in-page.
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href^='#']");
+    if (!a || e.defaultPrevented) return;
+    e.preventDefault();
+    if (a.getAttribute("href").length > 1) location.hash = a.getAttribute("href");
+  });
+})();
+</script>
+<script src="../../js/desktop.js"></script>
 <link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/ico.png"/>
 <title>WannaSmile | Home</title>
 
@@ -19,8 +42,8 @@
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" /></noscript>
 
 <!-- The disabled word-filter endpoint is configured before optional site scripts. -->
-<script src="system/js/endpoints.js"></script>
-<script src="system/js/wordfilter.js"></script>
+<script src="../../js/endpoints.js"></script>
+<script src="../../js/wordfilter.js"></script>
 
 <script>
 // Start the public SQL asset fetch now, while styles and scripts load.
@@ -49,15 +72,15 @@
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" /></noscript>
 <!-- Shoelace components (sl-alert for achievement pop-ups, credits.js). -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/shoelace-autoloader.js"></script>
-<link rel="stylesheet" href="system/css/main.css" />
-<link rel="stylesheet" href="system/css/widgets.css" />
-<link rel="stylesheet" href="system/css/shortcuts.css" />
-<link rel="stylesheet" href="system/css/daily.css" />
-<link rel="stylesheet" href="system/css/rusure.css" />
-<link rel="stylesheet" href="system/css/refer.css" />
-<link rel="stylesheet" href="system/css/tutorial.css" />
-<link rel="stylesheet" href="system/css/profile.css" />
-<link rel="stylesheet" href="system/css/updates.css" />
+<link rel="stylesheet" href="../../css/main.css" />
+<link rel="stylesheet" href="../../css/widgets.css" />
+<link rel="stylesheet" href="../../css/shortcuts.css" />
+<link rel="stylesheet" href="../../css/daily.css" />
+<link rel="stylesheet" href="../../css/rusure.css" />
+<link rel="stylesheet" href="../../css/refer.css" />
+<link rel="stylesheet" href="../../css/tutorial.css" />
+<link rel="stylesheet" href="../../css/profile.css" />
+<link rel="stylesheet" href="../../css/updates.css" />
 
 <script>
 // Preload whichever theme is actually cached as active (see themify.js's
@@ -84,10 +107,10 @@
 
   // Same local fallback as themify.js's _localizeSiteUrl: off the live host,
   // our own …github.io./assets/… URLs become this checkout's copy (this page
-  // sits at the site root, so the bare path is enough).
+  // sits in system/pages/index/, so the site root is three levels up).
   var LIVE_SITE_RE = /^https?:\/\/(?:wannasmile4evr|vvannazmile)\.github\.io\.?\//i;
   var onLiveSite   = /^(?:wannasmile4evr|vvannazmile)\.github\.io\.?$/i.test(location.hostname);
-  function localize(v) { return onLiveSite ? v : String(v).trim().replace(LIVE_SITE_RE, ""); }
+  function localize(v) { return onLiveSite ? v : new URL(String(v).trim().replace(LIVE_SITE_RE, ""), new URL(window.WS_SITE_ROOT)).href; }
 
   var urls = null;
   try {
@@ -156,52 +179,52 @@
   <header>
     <nav class="nav-links">
       <a href="." target="_blank">Home</a>
-      <a href="system/pages/discovery/index.html" target="_blank">Discovery</a>
-      <a href="system/pages/settings/index.html" target="_blank">Settings</a>
+      <a href="../discovery/index.html" target="_blank">Discovery</a>
+      <a href="../settings/index.html" target="_blank">Settings</a>
       <a href="https://padlet.com/ankomstudios/wannasmile4evr-s023ilquhanqla56127i" target="_blank">Suggestions</a>
       <!-- Ads and Partnerships: page not made yet. -->
       <!-- <a href="#" title="Coming soon">Ads and Partnerships</a> -->
       <div class="pages-anchor">
         <button class="arrowleft" onclick="prevPage()">
-          <img src="assets/images/header-arrows/left-arrow.png" />
+          <img src="../../../assets/images/header-arrows/left-arrow.png" />
         </button>
         <span class="page-indicator">...</span>
         <button class="arrowright" onclick="nextPage()">
-          <img src="assets/images/header-arrows/right-arrow.png" />
+          <img src="../../../assets/images/header-arrows/right-arrow.png" />
         </button>
-        <a href="system/pages/store/index.html" target="_blank">STORE</a>
-        <a href="system/pages/news/index.html" target="_blank">NEWS</a>
+        <a href="../store/index.html" target="_blank">STORE</a>
+        <a href="../news/index.html" target="_blank">NEWS</a>
 
         <button class="mute-btn">
-          <img src="assets/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
+          <img src="../../../assets/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
         </button>
 
         <button class="Qtype">
-          <img src="assets/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
+          <img src="../../../assets/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
         </button>
 
         <button id="nes-btn">
-          <img src="assets/images/panic-btn/deny.png" alt="Toggle">
+          <img src="../../../assets/images/panic-btn/deny.png" alt="Toggle">
         </button>
 
 <button id="cloak-btn">
-  <img src="assets/images/cloak-btn/cloaked.png" alt="CloakToggle">
+  <img src="../../../assets/images/cloak-btn/cloaked.png" alt="CloakToggle">
 </button>
 
 <button id="fav-btn" title="Show favorites" aria-pressed="false">
-  <img src="assets/images/fav-btn/unfav.gif" alt="Favorites toggle">
+  <img src="../../../assets/images/fav-btn/unfav.gif" alt="Favorites toggle">
 </button>
 
         <button type="button" id="openDailyPicks" class="hdr-icon-btn" title="Daily picks" aria-label="Daily picks">
-          <img src="assets/images/icons/daily.png" alt="" />
+          <img src="../../../assets/images/icons/daily.png" alt="" />
         </button>
 
         <button type="button" id="openShortCuts" class="hdr-icon-btn" title="Shortcuts" aria-label="Keyboard shortcuts">
-          <img src="assets/images/icons/shortcuts.png" alt="" />
+          <img src="../../../assets/images/icons/shortcuts.png" alt="" />
         </button>
 
         <button type="button" id="openDm" class="hdr-icon-btn" title="Chat (DMs)" aria-label="Open WannaChat">
-          <img src="assets/images/icons/dm.png" alt="" />
+          <img src="../../../assets/images/icons/dm.png" alt="" />
         </button>
 
       </div>
@@ -239,7 +262,7 @@
     <code id="dashTicketId" role="button" tabindex="0" hidden></code>
   </div>
   <a href="#" id="openUpdates" title="See what's new">Updates &amp; changes</a>
-    <a href="system/pages/credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>
+    <a href="../credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>
   <a href="#" id="openRefer" title="Share WannaSmile with a friend">Refer a friend</a>
     <a href="#" id="openTour" title="Walk through the site again">Tutorial</a>
   <a href="#" id="clearData">Clear My Data</a>
@@ -271,9 +294,9 @@
 <footer class="footer">
   <div class="footer-links">
     <a href="https://github.com/vvannazmile/vvannazmile.github.io" target="_blank" rel="noopener noreferrer">source</a>
-    <a href="system/pages/dmca/index.html" target="_blank">DMCA</a>
+    <a href="../dmca/index.html" target="_blank">DMCA</a>
     <a href="https://discord.gg/6DxVZqKYtJ" target="_blank">Discord</a>
-    <a href="system/pages/download/index.html" target="_blank" data-ws-browser-only>Desktop app</a>
+    <a href="../download/index.html" target="_blank" data-ws-browser-only>Desktop app</a>
 <a href="#" id="importData">Import Data</a>
 <a href="#" id="exportData">Export Data</a>
 <a href="#" id="transData">Transfer Data</a>
@@ -281,169 +304,22 @@
   </div>
 </footer>
 
-<div id="profileOverlay">
-  <!-- Left: profile picture library (opens from the avatar or the gear) -->
-  <aside id="pfpLibrary" class="pf-library pf-library-left" role="dialog" aria-labelledby="pfpLibraryTitle" hidden>
-    <div class="pf-library-head">
-      <h3 id="pfpLibraryTitle">Profile pictures</h3>
-      <button type="button" class="pf-icon-btn pf-library-close" data-close-library="pfp" aria-label="Close profile pictures"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+<div id="profileModal" class="pfm" role="dialog" aria-modal="true" aria-label="Profile" aria-hidden="true" data-stage="view" tabindex="-1">
+  <div class="pfm-stage">
+    <div class="pfm-card" id="profileModalCard" data-loading="true">
+      <iframe id="profileModalFrame" class="pfm-frame" title="Profile" src="about:blank"></iframe>
     </div>
-    <p class="pf-adv-hint"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Advanced editing crops still pictures; GIFs stay animated.</p>
-    <div id="pfpGrid" class="pf-library-grid pfp-grid"></div>
-    <div id="cropContainer" class="pf-crop" style="display:none;">
-      <img id="cropPreview" alt="Crop your picture">
-      <div class="crop-actions">
-        <button type="button" id="cropConfirm" class="overlay-btn save-btn"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Crop</button>
-        <button type="button" id="cropCancel" class="overlay-btn">Cancel</button>
-      </div>
-    </div>
-    <div class="pf-library-foot">
-      <button type="button" id="removePicBtn" class="overlay-btn remove-btn"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove picture</button>
-    </div>
-    <input type="file" id="profilePicInput" accept="image/*" hidden>
-  </aside>
-
-  <!-- Centre: the profile card, with Save below it -->
-  <div class="pf-center">
-    <!-- Frames dock above the preview without affecting its centred position. -->
-    <aside id="framesLibrary" class="pf-library pf-library-frames" role="dialog" aria-labelledby="framesLibraryTitle" hidden>
-      <div class="pf-library-head">
-        <h3 id="framesLibraryTitle">Picture frames</h3>
-        <button type="button" id="uploadFrameBtn" class="pf-icon-btn pf-frame-upload" title="Upload your own frame" aria-label="Upload your own frame"><i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i></button>
-        <button type="button" class="pf-icon-btn pf-library-close" data-close-library="frames" aria-label="Close picture frames"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      </div>
-      <p class="pf-library-msg" id="frameMessage" hidden></p>
-      <div id="frameViewport" class="pf-frame-viewport" role="listbox" aria-label="Profile frames" tabindex="0">
-        <div id="frameGrid" class="pf-frame-track"></div>
-      </div>
-      <div class="pf-library-foot">
-        <button type="button" id="removeFrameBtn" class="overlay-btn remove-btn"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove frame</button>
-      </div>
-      <input type="file" id="profileFrameInput" accept="image/png,image/webp,image/gif,image/apng" hidden>
-    </aside>
-
-    <div id="profileOverlayPanel" role="dialog" aria-modal="true" aria-labelledby="profileOverlayTitle" tabindex="-1">
-      <div id="profileWrapper" class="pf-wrapper" aria-hidden="true" hidden></div>
-      <div id="profileBanner" class="profile-banner" role="button" tabindex="0" aria-label="Change banner">
-        <span class="pf-edit-badge" aria-hidden="true"><i class="fa-solid fa-pencil"></i></span>
-      </div>
-
-      <h2 class="pf-title"><button type="button" id="profileOverlayTitle" class="pf-title-btn" title="Open pictures and banners" aria-expanded="false">Edit your profile</button></h2>
-
-      <div class="pf-top-actions">
-        <div class="pf-gear-wrap">
-          <button type="button" id="profileGearBtn" class="pf-icon-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="profileGearMenu" title="Profile options" aria-label="Profile options"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
-          <div id="profileGearMenu" class="pf-gear-menu" role="menu" hidden>
-            <button type="button" role="menuitem" data-open-library="pfp"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Profile pictures</button>
-            <button type="button" role="menuitem" data-open-library="frames"><i class="fa-regular fa-circle-dot" aria-hidden="true"></i> Picture frames</button>
-            <button type="button" role="menuitem" data-open-library="wrappers"><i class="fa-solid fa-image" aria-hidden="true"></i> Card wrapper</button>
-            <button type="button" role="menuitem" data-open-library="banner"><i class="fa-solid fa-panorama" aria-hidden="true"></i> Banners</button>
-            <button type="button" role="menuitemcheckbox" id="pixelToggleBtn" aria-checked="false"><i class="fa-solid fa-border-all" aria-hidden="true"></i> <span>Pixelate picture</span></button>
-            <button type="button" role="menuitemcheckbox" id="advancedEditBtn" aria-checked="false" title="Crop still pictures and banners before using them. GIF profile pictures stay animated."><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> <span>Advanced editing</span></button>
-            <div class="pf-gear-group" role="group" aria-labelledby="profileAvatarSizeLabel">
-              <span id="profileAvatarSizeLabel" class="pf-gear-label">Profile picture size</span>
-              <div class="pf-opacity">
-                <input type="range" id="profileAvatarSize" min="80" max="190" step="5" value="135" aria-labelledby="profileAvatarSizeLabel">
-                <output id="profileAvatarSizeValue" for="profileAvatarSize">135 px</output>
-                <button type="button" class="pf-gear-reset" id="resetAvatarSizeBtn" aria-label="Reset profile picture size">Reset</button>
-              </div>
-            </div>
-            <div class="pf-gear-group" role="group" aria-labelledby="profileAvatarShapeLabel">
-              <span id="profileAvatarShapeLabel" class="pf-gear-label">Picture shape</span>
-              <div id="profileAvatarShapeChoices" class="pf-shape-choices">
-                <button type="button" data-avatar-shape="circle" aria-pressed="true"><span class="pf-shape-swatch" aria-hidden="true"></span>Circle</button>
-                <button type="button" data-avatar-shape="rounded" aria-pressed="false"><span class="pf-shape-swatch" aria-hidden="true"></span>Rounded</button>
-                <button type="button" data-avatar-shape="square" aria-pressed="false"><span class="pf-shape-swatch" aria-hidden="true"></span>Square</button>
-              </div>
-            </div>
-            <div class="pf-gear-group" role="group" aria-labelledby="profileFrameScaleLabel">
-              <span id="profileFrameScaleLabel" class="pf-gear-label">Frame size</span>
-              <div class="pf-opacity">
-                <input type="range" id="profileFrameScale" min="100" max="200" step="5" value="120" aria-labelledby="profileFrameScaleLabel">
-                <output id="profileFrameScaleValue" for="profileFrameScale">120%</output>
-                <button type="button" class="pf-gear-reset" id="resetFrameScaleBtn" aria-label="Reset frame size">Reset</button>
-              </div>
-            </div>
-            <button type="button" role="menuitemcheckbox" id="profileLayoutToggle" aria-checked="false"><i class="fa-solid fa-up-down" aria-hidden="true"></i> <span>Vertical profile</span></button>
-            <div class="pf-gear-group" role="group" aria-labelledby="wrapperOpacityLabel">
-              <span id="wrapperOpacityLabel" class="pf-gear-label">Wrapper opacity</span>
-              <div class="pf-opacity">
-                <input type="range" id="wrapperOpacity" min="0" max="100" step="1" value="100" aria-labelledby="wrapperOpacityLabel">
-                <output id="wrapperOpacityVal" for="wrapperOpacity">100%</output>
-              </div>
-            </div>
-            <div class="pf-gear-group" role="group" aria-labelledby="pfpAlignLabel">
-              <span id="pfpAlignLabel" class="pf-gear-label">Picture position</span>
-              <div class="pf-align-choices">
-                <button type="button" role="menuitemradio" data-align="left" aria-checked="true" title="Left"><i class="fa-solid fa-align-left" aria-hidden="true"></i><span>Left</span></button>
-                <button type="button" role="menuitemradio" data-align="center" aria-checked="false" title="Centre"><i class="fa-solid fa-align-center" aria-hidden="true"></i><span>Centre</span></button>
-                <button type="button" role="menuitemradio" data-align="right" aria-checked="false" title="Right"><i class="fa-solid fa-align-right" aria-hidden="true"></i><span>Right</span></button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <button type="button" id="profileOverlayClose" class="pf-icon-btn" title="Close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      </div>
-
-      <div class="profile-head" data-align="left" data-layout="horizontal">
-        <button type="button" id="profileAvatarBtn" class="pf-avatar-btn" aria-label="Change profile picture">
-          <img id="profilePreview" class="profile-preview" src="" alt="">
-          <img id="profileFramePreview" class="pf-frame" alt="" draggable="false" hidden>
-          <span class="pf-avatar-pencil" aria-hidden="true"><i class="fa-solid fa-pencil"></i></span>
-        </button>
-        <div class="profile-head-text">
-          <div class="pf-name-row">
-            <span class="profile-overlay-username" id="profileOverlayUsername">Nickname</span>
-            <input type="text" id="usernameInput" class="pf-name-input" maxlength="20" autocomplete="off" spellcheck="false" aria-label="Nickname" hidden>
-            <button type="button" id="editNameBtn" class="pf-name-edit" aria-label="Edit nickname" title="Edit nickname"><i class="fa-solid fa-pencil" aria-hidden="true"></i></button>
-          </div>
-          <div class="profile-overlay-handle" id="profileOverlayHandle"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="pf-below">
-      <section id="wrapperLibrary" class="pf-wrapper-dock" role="dialog" aria-labelledby="wrapperLibraryTitle" hidden>
-        <div class="pf-library-head">
-          <h3 id="wrapperLibraryTitle">Card wrapper</h3>
-          <button type="button" id="removeWrapperBtn" class="overlay-btn remove-btn"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove wrapper</button>
-          <button type="button" class="pf-icon-btn pf-library-close" data-close-library="wrappers" aria-label="Close card wrappers"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        </div>
-        <div id="wrapperGrid" class="pf-library-grid wrapper-grid"></div>
-        <input type="file" id="profileWrapperInput" accept="image/*" hidden>
-      </section>
-      <div class="pf-save-row">
-      <button type="button" id="profileSaveBtn" class="overlay-btn save-btn" hidden><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save changes</button>
-      </div>
+    <div class="pfm-actions" role="group" aria-label="Profile actions">
+      <button type="button" id="profileModalPrimary" class="pfm-btn pfm-btn-primary" data-mode="view"><i class="fa-solid fa-pen" aria-hidden="true"></i> <span>Edit</span></button>
+      <button type="button" id="profileModalSecondary" class="pfm-btn" data-mode="view"><i class="fa-solid fa-xmark" aria-hidden="true"></i> <span>Close</span></button>
     </div>
   </div>
-
-  <!-- Right: banner library (opens from the banner or the gear) -->
-  <aside id="bannerLibrary" class="pf-library pf-library-right" role="dialog" aria-labelledby="bannerLibraryTitle" hidden>
-    <div class="pf-library-head">
-      <h3 id="bannerLibraryTitle">Banners</h3>
-      <button type="button" class="pf-icon-btn pf-library-close" data-close-library="banner" aria-label="Close banners"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-    </div>
-    <p class="pf-adv-hint"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Advanced editing: pick a banner to crop it.</p>
-    <div id="bannerGrid" class="pf-library-grid banner-grid"></div>
-    <div id="bannerCropContainer" class="pf-crop" style="display:none;">
-      <img id="bannerCropPreview" alt="Crop your banner">
-      <div class="crop-actions">
-        <button type="button" id="bannerCropConfirm" class="overlay-btn save-btn"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Crop</button>
-        <button type="button" id="bannerCropCancel" class="overlay-btn">Cancel</button>
-      </div>
-    </div>
-    <div class="pf-library-foot">
-      <button type="button" id="removeBannerBtn" class="overlay-btn remove-btn"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove banner</button>
-    </div>
-    <input type="file" id="profileBannerInput" accept="image/*" hidden>
-  </aside>
 </div>
 
 <div id="updatesOverlay" class="upd-overlay" role="dialog" aria-modal="true" aria-labelledby="updatesTitle" hidden>
   <div class="upd-backdrop" id="updatesBackdrop"></div>
   <div id="updatesPanel" tabindex="-1">
-    <img class="upd-banner" src="assets/images/pages/release/wannasmile-updated-banner.png" alt="" />
+    <img class="upd-banner" src="../../../assets/images/pages/release/wannasmile-updated-banner.png" alt="" />
     <h2 class="upd-title" id="updatesTitle">Updates n changes!</h2>
     <img class="upd-sticker" src="https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/stickers/MeltGui-pack/cheer.webp" alt="" />
     <ul class="upd-list">
@@ -463,37 +339,38 @@
   </div>
 </div>
 
-<script defer src="system/js/utils.js"></script>
-<script defer src="system/js/datacache.js"></script>
-<script defer src="system/js/paging.js"></script>
-<script defer src="system/js/ticket.js"></script>
-<script defer src="system/js/themify.js"></script>
-<script defer src="system/js/frames.js"></script>
-<script defer src="system/js/wrappers.js"></script>
-<script defer src="system/js/cursors.js"></script>
-<script defer src="system/js/sanitizer.js"></script>
-<script defer src="system/js/profile.js"></script>
-<script defer src="system/js/msgcore.js"></script>
-<script defer src="system/js/settings.js"></script>
-<script defer src="system/js/ui.js"></script>
-<script defer src="system/js/stickers.js"></script>
-<script defer src="system/js/quotes.js"></script>
-<script defer src="system/js/main.js"></script>
-<script defer src="system/js/boom.js"></script>
-<script defer src="system/js/panic.js"></script>
-<script defer src="system/js/shortcuts.js"></script>
-<script defer src="system/js/widgets.js"></script>
-<script defer src="system/js/rusure.js"></script>
-<script defer src="system/js/vendor/qrcode.js"></script>
-<script defer src="system/js/refer.js"></script>
-<script defer src="system/js/updates.js"></script>
-<script defer src="system/js/data.js"></script>
-<script defer src="system/js/gridSettings.js"></script>
-<script defer src="system/js/credits.js"></script>
-<script defer src="system/js/devtools.js"></script>
-<script defer src="system/js/tutorial.js"></script>
-<script defer src="system/js/daily.js"></script>
-<script defer src="system/js/version.js"></script>
+<script defer src="../../js/utils.js"></script>
+<script defer src="../../js/datacache.js"></script>
+<script defer src="../../js/paging.js"></script>
+<script defer src="../../js/ticket.js"></script>
+<script defer src="../../js/themify.js"></script>
+<script defer src="../../js/frames.js"></script>
+<script defer src="../../js/wrappers.js"></script>
+<script defer src="../../js/cursors.js"></script>
+<script defer src="../../js/sanitizer.js"></script>
+<script defer src="../../js/profile.js"></script>
+<script defer src="../../js/profile-modal.js"></script>
+<script defer src="../../js/msgcore.js"></script>
+<script defer src="../../js/settings.js"></script>
+<script defer src="../../js/ui.js"></script>
+<script defer src="../../js/stickers.js"></script>
+<script defer src="../../js/quotes.js"></script>
+<script defer src="../../js/main.js"></script>
+<script defer src="../../js/boom.js"></script>
+<script defer src="../../js/panic.js"></script>
+<script defer src="../../js/shortcuts.js"></script>
+<script defer src="../../js/widgets.js"></script>
+<script defer src="../../js/rusure.js"></script>
+<script defer src="../../js/vendor/qrcode.js"></script>
+<script defer src="../../js/refer.js"></script>
+<script defer src="../../js/updates.js"></script>
+<script defer src="../../js/data.js"></script>
+<script defer src="../../js/gridSettings.js"></script>
+<script defer src="../../js/credits.js"></script>
+<script defer src="../../js/devtools.js"></script>
+<script defer src="../../js/tutorial.js"></script>
+<script defer src="../../js/daily.js"></script>
+<script defer src="../../js/version.js"></script>
 
 </body>
 </html>

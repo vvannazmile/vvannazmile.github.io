@@ -139,13 +139,25 @@ document.addEventListener("keydown", (e) => {
     } else if (now < (window._reloadCooldownUntil || 0)) {
       showToast(`Cooldown: ${Math.ceil((window._reloadCooldownUntil - now) / 1000)}s remaining`);
     } else {
-      showToast("Re-fetching assets...");
+      const rb = window.WS_Rebuild;
+      showToast(rb && rb.remaining() > 0
+        ? `Rebuilding the library… (${rb.remaining() - 1} of ${rb.cap} left today)`
+        : "Re-fetching assets...");
       const toHide = window._allCards?.length
         ? window._allCards
         : [...document.querySelectorAll(".asset-card")];
       toHide.forEach(c => { c.style.display = "none"; });
       window.reloadAssets()
-        .then(ok => { if (ok) showToast("Assets reloaded!"); })
+        .then(ok => {
+          if (!ok) return;
+          const r = window._lastRebuild || {};
+          const mins = Math.ceil((window.WS_Rebuild?.waitMs() || 0) / 60000);
+          showToast(
+            r.status === "rebuilt" ? `Library rebuilt! ${r.remaining} of ${window.WS_Rebuild.cap} rebuilds left today.`
+            : r.status === "capped" ? `Rebuild limit reached (${window.WS_Rebuild.cap}/24h). Next one in ~${mins} min; refetched the current list.`
+            : r.status === "failed" ? "Worker rebuild failed; refetched the current list."
+            : "Assets reloaded!", 4200);
+        })
         .catch(() => showToast("Reload failed — check connection."));
     }
     return;
@@ -357,5 +369,5 @@ document.addEventListener("DOMContentLoaded", () => {
 // directly; without it (not loaded / no ticket) this is just the inbox.
 document.getElementById("openDm")?.addEventListener("click", () => {
   if (window.WS_Msg) { window.WS_Msg.openFromButton(); return; }
-  window.open("system/pages/chat/index.html", "wannachat");
+  window.open(new URL("../pages/chat/index.html", document.querySelector("script[src*='js/ui.js']")?.src || location.href).href, "wannachat");
 });

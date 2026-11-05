@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const SHORTCUTS = [
     { keys: ["Esc"],             label: "Panic: jump to your saved panic URL" },
     { keys: ["T"],               label: "Cycle incognito mode (off, about, blob)" },
-    { keys: ["R"],               label: "Refetch assets" },
+    { keys: ["R"],               label: "Rebuild the library via the Worker and refetch (15 per 24 hrs)" },
     { keys: ["F"],               label: "Switch between favorites and unfavorited assets" },
     { keys: ["Enter"],           label: "Scroll to the top when the Top button is visible" },
     { keys: ["←", "→"],          label: "Previous / next page", joiner: " " },
@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="sc-note">
           <b>1–9</b>, <b>[ ]</b> and <b>+ −</b> do nothing until you pick something for them.
           Choose your theme shortcuts, gif packs and widgets in the
-          <a href="system/pages/store/index.html" target="_blank" rel="noopener">Store</a>.
+          <a href="../store/index.html" target="_blank" rel="noopener">Store</a>.
         </div>
       </div>
     </div>`;

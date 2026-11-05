@@ -137,7 +137,7 @@
   // same-page jumps don't count.
   function noteVisit(href) {
     let url;
-    try { url = new URL(href, location.href); } catch (_) { return; }
+    try { url = new URL(href, document.baseURI); } catch (_) { return; }
     if (!/^https?:$/.test(url.protocol)) return;
     url.hash = "";
     const here = new URL(location.href); here.hash = "";

@@ -17,6 +17,10 @@ window.WS_ENDPOINTS = Object.freeze({
   // One exported JSON file ({ updated, items }) rebuilt by the ankom-api Worker
   // from D1. The endpoint versions its edge cache against the R2 object ETag.
   library: "https://api.ankomstudios.com/library/items",
+  // Asks the ankom-api Worker to rebuild that JSON file now instead of waiting
+  // for its 3-hour schedule. The R shortcut calls it (15 per 24 hrs, see
+  // WS_Rebuild in main.js). POST, no body.
+  rebuild: "https://api.ankomstudios.com/library/rebuild",
   // Your Cloudflare Worker HTML-fetch endpoint used by "qwerty" assets.
   // This fetches the initial HTML document only; it is not a WebSocket relay.
   fetch: "https://ankom-url-api.ankomstudios.workers.dev/fetch?url=",

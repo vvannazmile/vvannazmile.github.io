@@ -1,17 +1,4 @@
-/* ── Profile modal (see system/js/profile.js) ─────────────────
-   Same family as the Shortcuts / daily-picks / tutorial pop-ups: blurred
-   polka-dot backdrop, tilted panels with offset accent shadows, pill
-   buttons, theme variables.
-
-   Three pieces on one overlay:
-     left    #pfpLibrary     profile pictures (Upload pinned first), with
-             #framesLibrary (picture frames) laid on top of it
-             #wrapperLibrary the card-wrapper picker, docked under the card
-     centre  .pf-center      the card (banner, avatar, name) + Save below
-     right   #bannerLibrary  banners (Upload pinned first)
-   The card only shows what's on display; everything else is behind the
-   gear, the avatar (pencil on hover) or the banner. Sizes are in vh inside
-   clamp()s so it keeps its proportions on any PC screen. */
+/* Homepage profile modal and its standalone preview. */
 
 #profileOverlay {
   --pf-banner-h: clamp(90px, 17vh, 230px);
@@ -813,6 +800,10 @@
 .pf-opacity { display: flex; align-items: center; gap: 8px; margin: 0 6px; font-size: 0.85em; }
 .pf-opacity input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent-color, #f44); cursor: pointer; }
 .pf-opacity output { min-width: 4ch; text-align: right; font-weight: bold; }
+.pf-position-control { display: flex; align-items: center; gap: 8px; margin: 6px; font-size: 0.85em; }
+.pf-position-control > span { width: 1.2em; font-weight: bold; }
+.pf-position-control input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent-color, #f44); cursor: pointer; }
+.pf-position-control output { min-width: 5ch; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Frames with a blend mode (FramesWS `blend`) blend with the picture under them. */
 .pfp-wrap, .pf-avatar-btn { isolation: isolate; }
@@ -831,3 +822,176 @@
 .pf-wrapper { border-radius: 19px 15px 21px 13px; }
 .pf-gear-menu { max-height: 70vh; overflow-y: auto; z-index: 5; }
 #profileOverlayPanel { z-index: 10; }   /* above the Save button so the tall gear menu never slides under it */
+
+/* The modal opens as a read-only profile; the full editor is opt-in. */
+#profileOverlay:not(.profile-editing) {
+  overflow-y: auto;
+  padding: 24px 14px;
+}
+#profileOverlay:not(.profile-editing) > :not(.pf-center) {
+  display: none !important;
+}
+#profileOverlay:not(.profile-editing) .pf-library,
+#profileOverlay:not(.profile-editing) .pf-wrapper-dock,
+#profileOverlay:not(.profile-editing) .pf-top-actions,
+#profileOverlay:not(.profile-editing) .pf-edit-badge,
+#profileOverlay:not(.profile-editing) .pf-avatar-pencil,
+#profileOverlay:not(.profile-editing) #editNameBtn,
+#profileOverlay:not(.profile-editing) #profileSaveBtn,
+#profileOverlay:not(.profile-editing) #profileEditCancel {
+  display: none !important;
+}
+#profileOverlay:not(.profile-editing) #profileOverlayTitle,
+#profileOverlay:not(.profile-editing) #profileAvatarBtn,
+#profileOverlay:not(.profile-editing) #profileBanner {
+  pointer-events: none;
+  cursor: default;
+}
+#profileOverlay:not(.profile-editing) .pf-center {
+  margin: auto 0;
+}
+#profileOverlay:not(.profile-editing) .pf-below {
+  position: relative;
+  inset: auto;
+  margin-top: clamp(12px, 2vh, 20px);
+}
+#profileOverlay:not(.profile-editing) .pf-view-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+#profileOverlay.profile-editing .pf-view-actions { display: none; }
+.pf-view-actions .overlay-btn { min-width: 112px; }
+
+#profileOverlay.pf-centered-modal {
+  --pf-banner-h: clamp(64px, 12vh, 136px);
+  --pf-avatar: clamp(48px, 10vh, 116px);
+  --pf-pad: clamp(8px, 1.5vh, 16px);
+  --pf-gap: clamp(6px, 1vh, 12px);
+  --pf-font: clamp(11px, 1.5vh, 15px);
+  overflow: hidden;
+  padding: 12px;
+}
+#profileOverlay.pf-centered-modal .pf-center {
+  width: min(760px, calc(100vw - 24px));
+  flex: none;
+  margin: auto;
+}
+#profileOverlay.pf-centered-modal #profileOverlayPanel {
+  max-height: none;
+  overflow: visible;
+  padding-bottom: var(--pf-pad);
+}
+#profileOverlay.pf-centered-modal .profile-banner {
+  border-radius: 19px 15px 0 0;
+}
+#profileOverlay.pf-centered-modal .pf-top-actions {
+  top: 8px;
+}
+#profileOverlay.pf-centered-modal .pf-title {
+  top: 10px;
+  font-size: clamp(15px, 2.4vh, 24px);
+}
+#profileOverlay.pf-centered-modal .pf-profile-details {
+  display: grid;
+  gap: 10px;
+  margin: 8px var(--pf-pad) 0;
+  color: var(--url-color, #fff);
+}
+#profileOverlay.pf-centered-modal .pf-profile-details[hidden],
+#profileOverlay.pf-centered-modal .pf-profile-detail[hidden] {
+  display: none !important;
+}
+#profileOverlay.pf-centered-modal .pf-profile-detail h3 {
+  margin: 0 0 4px;
+  font-size: 0.9em;
+}
+#profileOverlay.pf-centered-modal .pf-profile-detail p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#profileOverlay.pf-centered-modal .pf-profile-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+#profileOverlay.pf-centered-modal .pf-profile-role {
+  padding: 3px 8px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 999px;
+  background: rgba(0,0,0,.32);
+}
+#profileOverlay.pf-centered-modal .pf-below {
+  position: relative;
+  inset: auto;
+  display: flex;
+  margin-top: 12px;
+  padding: 0;
+}
+#profileOverlay.pf-centered-modal .pf-view-actions,
+#profileOverlay.pf-centered-modal .pf-save-row {
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+}
+#profileOverlay.pf-centered-modal .pf-save-row {
+  width: 100%;
+}
+#profileOverlay.pf-centered-modal .pf-view-actions .overlay-btn,
+#profileOverlay.pf-centered-modal .pf-save-row .overlay-btn {
+  min-width: 112px;
+}
+#profileOverlay.pf-centered-modal .save-btn {
+  border-color: var(--accent-color, #f44);
+  background: color-mix(in srgb, var(--accent-color, #f44) 30%, #111);
+}
+#profileOverlay.pf-centered-modal .save-btn:hover:not(:disabled) {
+  border-color: var(--accent-color, #f44);
+}
+
+@media (max-height: 620px) {
+  #profileOverlay.pf-centered-modal {
+    --pf-banner-h: clamp(52px, 10vh, 90px);
+    --pf-avatar: clamp(44px, 9vh, 76px);
+    --pf-pad: 8px;
+    --pf-gap: 5px;
+    padding-block: 6px;
+  }
+  #profileOverlay.pf-centered-modal .pf-profile-details {
+    gap: 6px;
+    margin-top: 5px;
+  }
+}
+
+@media (max-width: 720px) {
+  #profileOverlay.pf-centered-modal {
+    padding-inline: 8px;
+  }
+  #profileOverlay.pf-centered-modal .pf-center {
+    width: calc(100vw - 16px);
+  }
+}
+
+/* ── Homepage profile modal: the card on its own, buttons underneath ── */
+.pfm{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;
+  background:radial-gradient(circle,rgba(255,255,255,.12) 1.5px,transparent 2px) 0 0/22px 22px,rgba(0,0,0,.45);
+  backdrop-filter:blur(9px) saturate(1.3);-webkit-backdrop-filter:blur(9px) saturate(1.3);outline:none}
+.pfm.visible{display:flex;animation:pfm-fade .25s ease}
+@keyframes pfm-fade{from{opacity:0}}
+.pfm-stage{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:100%}
+.pfm-card{width:min(600px,96vw);height:var(--pfm-h,420px);transition:width .32s cubic-bezier(.2,.9,.3,1),height .25s ease,opacity .2s ease}
+.pfm[data-stage="edit"] .pfm-card{width:min(1020px,96vw)}
+.pfm-card[data-loading="true"]{opacity:0}
+.pfm.visible .pfm-card:not([data-loading="true"]){animation:pfm-pop .35s cubic-bezier(.3,1.4,.5,1)}
+@keyframes pfm-pop{from{transform:scale(.92);opacity:0}}
+.pfm-frame{display:block;width:100%;height:100%;border:0;background:transparent;color-scheme:dark}
+.pfm-actions{display:flex;gap:10px;justify-content:center}
+.pfm-btn{min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;cursor:pointer;
+  font:700 14px monospace;color:var(--url-color,#fff);background:var(--aside-bg,rgba(0,0,0,.92));
+  border:2px solid var(--accent-color,#f44);border-radius:12px;box-shadow:3px 3px 0 var(--accent-color,#f44);transition:transform .12s ease,opacity .15s ease}
+.pfm-btn:hover:not(:disabled){transform:translate(-1px,-1px)}
+.pfm-btn:focus-visible{outline:2px solid var(--url-color,#fff);outline-offset:3px}
+.pfm-btn:disabled{opacity:.55;cursor:wait}
+.pfm-btn-primary{background:color-mix(in srgb,var(--accent-color,#f44) 22%,rgba(0,0,0,.9))}
+@media (prefers-reduced-motion:reduce){.pfm.visible,.pfm.visible .pfm-card{animation:none}.pfm-card{transition:none}}

@@ -246,7 +246,7 @@ function setFavicon(url) {
   }
   link.href = (url && url.startsWith("http")) ? url
     : /^icons\//.test(url || "") ? "https://ws.ankomstudios.com/cloaks/" + url.slice(6)   // old saved presets ("icons/x.png")
-    : (url ? `system/${url}` : "");
+    : (url ? new URL(url, _SITE_ROOT + "system/").href : "");
 }
 
 (function applyGlobalCloak() {

@@ -1219,7 +1219,7 @@ window.addEventListener("load", () => {
       const link = doc.createElement("link");
       link.rel = "icon";
       let href = icon;
-      try { href = new URL(window.toMediabase ? window.toMediabase(icon) : icon, location.href).href; } catch (_) {}
+      try { href = new URL(window.toMediabase ? window.toMediabase(icon) : icon, window.WS_SITE_ROOT || document.baseURI).href; } catch (_) {}
       link.href = href;
       link.setAttribute("crossorigin", "anonymous");
       doc.head.appendChild(link);
@@ -3516,6 +3516,56 @@ window.addEventListener("load", () => {
   window._reloadCooldownUntil = 0;
   const RELOAD_COOLDOWN_MS    = 15000;
 
+  // ── Worker rebuild (R shortcut) ──────────────────────────────────────
+  // The Worker re-exports the library JSON every 3 hours on its own. R asks it
+  // to do that right now, at most REBUILD_CAP times per rolling 24 hours (per
+  // browser, kept in localStorage). Past the cap R still refetches the
+  // current file, it just doesn't wake the Worker.
+  const REBUILD_CAP       = 15;
+  const REBUILD_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const REBUILD_KEY       = "ws_rebuild_calls";
+  const REBUILD_TIMEOUT   = 20000;
+
+  function _rebuildCalls() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(REBUILD_KEY) || "[]");
+      const cutoff = Date.now() - REBUILD_WINDOW_MS;
+      return Array.isArray(raw) ? raw.filter(t => Number.isFinite(t) && t > cutoff).sort((a, b) => a - b) : [];
+    } catch (_) { return []; }
+  }
+  function _saveRebuildCalls(list) { try { localStorage.setItem(REBUILD_KEY, JSON.stringify(list)); } catch (_) {} }
+
+  window.WS_Rebuild = {
+    cap: REBUILD_CAP,
+    remaining() { return Math.max(0, REBUILD_CAP - _rebuildCalls().length); },
+    // ms until the oldest call in the window expires and frees a slot (0 if one is free)
+    waitMs() {
+      const calls = _rebuildCalls();
+      return calls.length < REBUILD_CAP ? 0 : Math.max(0, calls[0] + REBUILD_WINDOW_MS - Date.now());
+    },
+    // -> { status: "rebuilt" | "capped" | "failed" | "disabled", remaining }
+    async request() {
+      const url = window.WS_ENDPOINTS?.rebuild;
+      if (!url) return { status: "disabled", remaining: this.remaining() };
+      const calls = _rebuildCalls();
+      if (calls.length >= REBUILD_CAP) return { status: "capped", remaining: 0 };
+      // Counted when sent, so a failing Worker can't be hammered either.
+      calls.push(Date.now());
+      _saveRebuildCalls(calls);
+      const remaining = Math.max(0, REBUILD_CAP - calls.length);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REBUILD_TIMEOUT);
+      try {
+        const res = await fetch(url, { method: "POST", cache: "no-store", signal: controller.signal });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return { status: "rebuilt", remaining };
+      } catch (err) {
+        console.error("[Worker rebuild]", err);
+        return { status: "failed", remaining };
+      } finally { clearTimeout(timer); }
+    },
+  };
+
   window.reloadAssets = async function () {
     if (window._reloading) return;
     window._reloading          = true;
@@ -3553,6 +3603,9 @@ window.addEventListener("load", () => {
     document.dispatchEvent(new CustomEvent("ws:refetch"));
 
     try {
+      // Ask the Worker for a fresh JSON first, then fetch it. A failed or
+      // capped rebuild just means we fetch the file as it already is.
+      window._lastRebuild = await window.WS_Rebuild.request();
       await loadAssets();
       window._reloadCooldownUntil = Date.now() + RELOAD_COOLDOWN_MS;
       if (typeof window.startPlaceholderCycle === "function") window.startPlaceholderCycle();
