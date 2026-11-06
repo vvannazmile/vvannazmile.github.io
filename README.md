@@ -1,4 +1,4 @@
-![WannaSmile Banner](https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/assets/images/pages/release/more-hollows.png)
+![WannaSmile Banner](https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/version-splash/more-hollows.png)
 
 <h1 align="center">WannaSmile: Nexus</h1>
 
@@ -63,7 +63,7 @@ These are the contributors to WannaSmile. Check out their profiles and drop them
 
 <p align="center">
   <a href="https://github.com/vvannazmile/vvannazmile.github.io/graphs/contributors">
-    <img src="https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/documentation/readme/contrib.png" alt="Contributors listed">
+    <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/contributors/readme/splash.png" alt="Contributors listed">
   </a>
 </p>
 
