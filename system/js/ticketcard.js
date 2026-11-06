@@ -101,7 +101,7 @@
       <div class="tk-stage">
         <div class="tk-card">
           <div class="tk-face tk-front">
-            <div class="tk-head"><span class="tk-brand">WannaSmile4Evr</span><span class="tk-stub">admit one</span></div>
+            <div class="tk-head"><span class="tk-brand">WannaSmile</span><span class="tk-stub">ACCOUNT</span></div>
             <div class="tk-body">
               <label class="tk-field"><span class="tk-lab">Username</span>
                 <input class="tk-in" data-f="user" type="text" maxlength="${o.userMax}" placeholder="username" aria-label="Username" autocomplete="off" autocapitalize="off" spellcheck="false" />

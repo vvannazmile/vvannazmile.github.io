@@ -5,13 +5,14 @@
 // about unread messages, "someone is typing", message notifications and the
 // profile pictures/names shown in chat, so every page agrees.
 //
-//  • Data comes only from the DATA Apps Script (window.WS_ENDPOINTS.data):
+//  • Chat activity and profiles come from the global-chat Worker
+//    (window.WS_ENDPOINTS.chat):
 //      GET  ?type=chat          friends, last message per friend, and
 //                               typing: [friends typing to you] + typingLeft
-//                               (real activity, posted by their chat page, see data.gs)
+//                               (real activity, posted by their chat page)
 //      GET  ?type=chatprofiles  display name + 50px avatar of you and friends
-//      GET  ?type=typingquotes  column C of QuoteSystemWS (typing-status lines)
 //      POST type "chat"/"profile" to send typing and to share your avatar.
+//    Typing-status quote templates come from system/json/quotes.json.
 //    On the chat page chat.js already polls, so it hands every answer to
 //    WS_Msg.ingest(); anywhere else this file polls (a small cached answer
 //    when nothing changed) and shares what it finds with the other open tabs
@@ -20,7 +21,7 @@
 //    "seen" marker kept per browser (ws_chat_seen, written by markSeen()).
 //    Opening the conversation (chat page, tab visible and focused) clears it
 //    in every tab; notification cards for that friend go away with it.
-//  • The DM button (#openDm) swaps to assets/images/icons/dmed.png while
+//  • The DM button (#openDm) swaps to https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-icons/dmed.png while
 //    anything is unread. If that file isn't there it keeps the normal icon and
 //    shows a badge with the count instead.
 //  • Notifications are cards in the corner. Clicking one opens that
@@ -29,19 +30,18 @@
 (() => {
   if (window.WS_Msg) return;
 
-  const API = window.WS_ENDPOINTS && window.WS_ENDPOINTS.data;
+  const API = window.WS_ENDPOINTS && window.WS_ENDPOINTS.chat;
   const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || location.href;
   const ROOT = new URL("../../", SCRIPT_SRC).href;
-  const ASSET_ROOT = new URL("assets/", ROOT);
   const CHAT_URL = ROOT + "system/pages/chat/index.html";
-  const UNREAD_ICON = new URL("images/icons/dmed.png", ASSET_ROOT).href;   // unread state; dm.png is the normal state
+  const UNREAD_ICON = "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-icons/dmed.png";   // unread state; dm.png is the normal state
   const DEFAULT_PIC = "https://raw.githubusercontent.com/bguhm/bguhm.github.io/main/system/images/profile.png";
   const IS_CHAT_PAGE = /\/pages\/chat\//.test(location.pathname);
 
   const K = {
     id: "ws_ticket_id", key: "ws_ticket_key", status: "ws_ticket_status", user: "ws_username",
     seen: "ws_chat_seen", notified: "ws_msg_notified", state: "ws_msg_state", pollAt: "ws_msg_poll",
-    profiles: "ws_chat_profiles", quotes: "ws_typing_quotes", sig: "ws_msg_profile_sig",
+    profiles: "ws_chat_profiles", sig: "ws_msg_profile_sig",
   };
   const NAME_RE = /^[a-z0-9][a-z0-9_.\-]{2,19}$/;
 
@@ -51,7 +51,6 @@
   const POLL_MAX = 120000;
   const TYPING_HOLD = 6000;     // used only if the server doesn't say how long a flag has left
   const NOTIFY_WINDOW = 10 * 60000;   // only announce messages this fresh
-  const QUOTES_TTL = 30 * 60000;
   const PROFILES_TTL = 5 * 60000;
   const MAX_CARDS = 3;
 
@@ -86,7 +85,7 @@
     return res.json();
   }
   async function post(type, body) {
-    // text/plain body = "simple" request, no CORS preflight (Apps Script can't answer one).
+    // Send JSON without custom headers; the Worker accepts this simple request.
     const res = await fetch(API, { method: "POST", cache: "no-store", body: JSON.stringify({ type, ...creds(), ...body }) });
     if (!res.ok) throw new Error("HTTP " + res.status);
     return res.json();
@@ -270,8 +269,8 @@
     }
   }
 
-  // ── typing quotes (column C) ──────────────────────────────────────────
-  // Templates, one per cell of column C:
+  // ── typing quotes ─────────────────────────────────────────────────────
+  // Templates, one per entry in system/json/quotes.json:
   //   (someone) (is-typing)...      -> "<display name> is typing..."
   //   (is-typing)...                -> "<display name> is typing..."
   //   ankom studios (is-typing)...  -> a personal line, used only when
@@ -310,18 +309,18 @@
   }
 
   async function loadQuotes() {
-    const cached = json(K.quotes, null);
-    if (cached && Array.isArray(cached.list)) S.quotes = cached.list;
-    if (cached && Date.now() - (cached.at || 0) < QUOTES_TTL) return;
-    if (!active()) return;
+    if (S.quotes !== null) return;
     try {
-      const data = await get("typingquotes");
-      if (!data || typeof data !== "object" || data.error) throw new Error("none");
-      const list = Object.values(data).filter(Array.isArray)[0] || [];
-      S.quotes = list.map(String).filter((v) => v.trim());
-      write(K.quotes, JSON.stringify({ at: Date.now(), list: S.quotes }));
-    } catch (_) {
-      if (!S.quotes) S.quotes = [];
+      const response = await fetch(new URL("system/json/quotes.json", ROOT), { cache: "no-cache" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!Array.isArray(data?.typingQuotes)) {
+        throw new Error("quotes.json must contain a typingQuotes array.");
+      }
+      S.quotes = data.typingQuotes.filter((line) => typeof line === "string" && line.trim());
+    } catch (error) {
+      console.error("[WS_Msg] Failed to load local typing quotes:", error);
+      S.quotes = [];
     }
   }
 
@@ -616,7 +615,7 @@
       S.fails = 0;
       if (data && data.ok === true) ingest(data);
       else if (data && (data.code === "ticket" || data.error === "Ticket required.")) S.dead = true;
-      else if (data && !data.error && !data.code) S.dead = true;     // an older data.gs answers with the assets list
+      else if (data && !data.error && !data.code) S.dead = true;
     } catch (_) {
       S.fails++;
     } finally {

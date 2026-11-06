@@ -4,17 +4,9 @@
 // Runs for anyone who has never finished it, or who finished it on an older
 // version of the site (bump TUTORIAL_VERSION to show it to everyone again).
 //
-//   1. Set up   — when this browser has no approved ticket yet (ticket.js),
-//                 "Create your ticket" comes first: a USERNAME (unique,
-//                 permanent, on the ticket) + a reason; an "I have a data
-//                 file" button opens a pop-up for bringing a ticket over
-//                 instead. The picture chosen on the flipped ticket is saved as
-//                 the profile picture the moment the ticket is created, so
-//                 nobody is asked for a profile again (the username shows
-//                 until a nickname is set from the profile). The profile step
-//                 (stepSetup) only runs for someone who got in some other way,
-//                 e.g. a data file with no picture.
-//                 Steps 2–5 always wait for an approved ticket.
+//   1. Set up   — visitors create a Worker account or sign in. The profile
+//                 setup then runs if this browser has no saved profile.
+//                 Steps 2–5 wait for an authenticated account.
 //   2. Pages    — change the page with the arrows (or ← →)
 //   3. Search   — type in the search box; it searches every page at once
 //   4. Filters  — click the grey search button to open categories
@@ -32,22 +24,21 @@
 //                 profile, and awards the "WannaTutorialize" achievement
 //                 (+15 credits, once — see credits.js)
 //
-// "Skip tutorial" is on every card from step 2 on (the ticket and profile in
-// step 1 can't be skipped).
+// "Skip tutorial" is on every card from step 2 on (account and profile setup
+// in step 1 can't be skipped).
 //
 // Steps 2–5 spotlight the real controls: everything else is blurred and
 // blocked, and the step moves on once the person actually does the thing.
 // "Tutorial" in the ☰ menu replays them (WS_Tutorial.replay()),
-// starting at step 2 — the ticket and profile are already set by then.
+// starting at step 2 — the account and profile are already set by then.
 // Each step removes its own listeners when it ends (endStep), so nothing
 // keeps watching the page once the tour is over.
 // The daily-picks pop-up waits until the tutorial (and the Shortcuts panel
 // it ends on) is closed — see daily.js.
 //
-// The ticket screens (create / sent / denied) are cards in this same layer,
-// and the data-file upload is a pop-up over them. Someone who finished the
-// tour but has no approved ticket gets them too ("gate only": no step
-// dots, closes once approved).
+// Account setup is a card in this layer. Someone who finished the tour but
+// has no account gets the same signup/sign-in card ("gate only": no step
+// dots, closes after sign-in).
 //
 // Needs: profile.js (saveProfile, PROFILE_IMAGES), main.js (currentPage,
 // filterAssets, _cardIndex), shortcuts.js (WS_Shortcuts), ticket.js
@@ -57,10 +48,6 @@
   const SELF_SRC         = (document.currentScript && document.currentScript.src) || "";  // for loading ticketcard.js from beside this file
   const DONE_KEY         = "ws_tutorial_version";
   const NICK_MAX         = 20;
-  // "Create your ticket" extras. The reason is sent as one Reason string,
-  // "grade|name|role|paragraph" (see ticketReason), with N/A for blanks.
-  const REASON_MAX       = 800;   // the optional paragraph
-  const TICKET_ROLES     = ["normie", "tester", "contributor"];
   const STEP_COUNT       = 8;
 
   const needsTutorial = () => {
@@ -79,10 +66,10 @@
     restart: () => { try { localStorage.removeItem(DONE_KEY); } catch (_) {} location.reload(); },
   };
 
-  const ticketNeeded = () => window.WS_TICKETS_ENABLED !== false
+  const accountNeeded = () => window.WS_ACCOUNTS_ENABLED !== false
     && !!window.WS_Ticket && !window.WS_Ticket.approved();
-  // Kept around even after the tour is done: a revoked ticket brings the
-  // ticket screens back (ws:ticket-gate).
+  // Kept around even after the tour is done: an expired session brings the
+  // account gate back (ws:ticket-gate).
   if (!pending && !window.WS_Ticket) return;
 
   const $ = (sel) => document.querySelector(sel);
@@ -159,7 +146,7 @@
     dotsEl.appendChild(li);
   }
 
-  let gateOnly  = false;  // ticket screens for someone who's done the tour
+  let gateOnly  = false;  // account gate for someone who's done the tour
   let setupOnly = false;  // just the profile step, for someone who skipped it
   let assetsLoaded = false;
   let assetsFailed = false;
@@ -373,6 +360,112 @@
     : "";
   const ticketUsername = () => window.WS_Ticket?.username?.() || "";
 
+  function stepCreateAccount(err = "", initialMode = "register", previous = {}) {
+    stopPoll();
+    spot = null;
+    stepTick = null;
+    const T = window.WS_Ticket;
+    let mode = initialMode;
+    let sending = false;
+    setCard({
+      step: 0,
+      cls: "is-ticket",
+      title: mode === "register" ? "Create your account" : "Sign in",
+      html: `<p>${mode === "register"
+        ? "Create one WannaSmile account to use Global Chat and keep your username."
+        : "Sign in with the username and password you chose when creating your account."}</p>
+        <form class="wst-fields wst-account-form" novalidate>
+          <label for="wstAccountName">Username</label>
+          <input id="wstAccountName" name="username" type="text" maxlength="20" value="${escapeHTML(previous.name || "")}" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+          <div class="wst-account-email">
+            <label for="wstAccountEmail">Email</label>
+            <input id="wstAccountEmail" name="email" type="email" maxlength="254" value="${escapeHTML(previous.email || "")}" autocomplete="email" autocapitalize="none" spellcheck="false" required />
+          </div>
+          <label for="wstAccountPass">Password</label>
+          <input id="wstAccountPass" name="password" type="password" maxlength="128" autocomplete="${mode === "register" ? "new-password" : "current-password"}" required />
+          <label class="wst-check"><input id="wstAccountShow" type="checkbox" /> Show password</label>
+        </form>
+        <p class="wst-note wst-account-note">Email is not verified; it is only checked to prevent reuse. Password recovery is not available yet. Your account ID is not a password.</p>
+        <p class="wst-alt"><button type="button" class="wst-link" data-account-mode>${mode === "register" ? "Already have an account? Sign in" : "New here? Create an account"}</button></p>`,
+    });
+
+    const form = textEl.querySelector(".wst-account-form");
+    const name = $("#wstAccountName");
+    const email = $("#wstAccountEmail");
+    const pass = $("#wstAccountPass");
+    const emailField = textEl.querySelector(".wst-account-email");
+    const show = $("#wstAccountShow");
+    const modeButton = textEl.querySelector("[data-account-mode]");
+    emailField.hidden = mode !== "register";
+    email.disabled = mode !== "register";
+    email.required = mode === "register";
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (onNext) onNext();
+    });
+
+    const problem = () => {
+      const usernameIssue = usernameProblem(name.value.trim());
+      if (usernameIssue) return usernameIssue;
+      if (mode === "register") {
+        const address = email.value.trim();
+        if (!address || address.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return "Enter a valid email address.";
+        if (!pass.value || pass.value.length < 8) return "Passwords are at least 8 characters.";
+      } else if (!pass.value) return "Enter your password.";
+      return "";
+    };
+
+    const refresh = () => {
+      if (sending) return;
+      const bad = problem();
+      if (bad) hideNext();
+      else showNext(mode === "register" ? "Create account" : "Sign in", submit);
+      setStatus(err || bad);
+      err = "";
+    };
+
+    async function submit() {
+      if (sending || problem()) return;
+      sending = true;
+      hideNext();
+      setStatus(mode === "register" ? "Creating your account…" : "Signing in…");
+      try {
+        const result = mode === "register"
+          ? await T.register({ name: name.value.trim(), email: email.value.trim(), pass: pass.value })
+          : await T.login({ name: name.value.trim(), pass: pass.value });
+        if (result?.ok) {
+          ticketApproved(mode === "register" ? "Your WannaSmile account is ready." : "Welcome back.");
+          return;
+        }
+        err = result?.error || "That didn't work. Check your details and try again.";
+      } catch (error) {
+        console.error("[tutorial] account request failed:", error);
+        err = error?.message || "Couldn't reach the account service. Check your connection and try again.";
+      }
+      sending = false;
+      refresh();
+    }
+
+    modeButton.addEventListener("click", () => {
+      const current = { name: name.value, email: email.value };
+      mode = mode === "register" ? "login" : "register";
+      stepCreateAccount("", mode, current);
+    });
+    [name, email, pass].forEach((input) => {
+      input.addEventListener("input", refresh);
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && onNext) {
+          event.preventDefault();
+          if (typeof form.requestSubmit === "function") form.requestSubmit();
+          else onNext();
+        }
+      });
+    });
+    show.addEventListener("change", () => { pass.type = show.checked ? "text" : "password"; });
+    refresh();
+    setTimeout(() => (name.value ? pass : name).focus({ preventScroll: true }), 50);
+  }
+
   // Listeners a tour step adds outside the tutorial layer (the search box,
   // the Shortcuts panel) register a cleanup here; endStep() runs them when
   // the step is left by any route — Next, skip, or the tour ending.
@@ -488,7 +581,7 @@
         hideNext();
       } else if (ok) {
         setStatus(`Looking good, ${shown}!`, true);
-        showNext(ticketNeeded() ? "Next: your ticket" : "Save and continue", finishSetup);
+        showNext(accountNeeded() ? "Next: your account" : "Save and continue", finishSetup);
       } else {
         setStatus(!chosenPic && (name || nickOptional) ? "Now pick a picture."
                 : !name && !chosenPic ? "Pick a nickname and a picture to continue."
@@ -570,7 +663,7 @@
         window.showToast?.(`Profile saved. Welcome, ${name}!`);
         return;
       }
-      if (ticketNeeded()) afterProfileNeedsTicket();
+      if (accountNeeded()) afterProfileNeedsTicket();
       else continueTour();
     }
 
@@ -579,27 +672,19 @@
     setTimeout(() => (nick.value ? card : nick).focus({ preventScroll: true }), 50);
   }
 
-  // ── Ticket screens (still "step 1": nothing else works without one) ──
+  // ── Account gate and profile follow-up ────────────────────────────────
   const TICKET_POLL_MS = 30000;
   let pollTimer = 0;
   let checking  = false;
   const stopPoll = () => { clearInterval(pollTimer); pollTimer = 0; };
 
   let profileFirstDone = false; // the setup step was completed this visit
-  let approvedHere     = false; // a ticket got approved in this visit's flow
+  let approvedHere     = false; // an account was connected in this visit
   let autoApprove      = null;  // from ?type=ticketinfo: new tickets instant?
 
-  // Profile done but no approved ticket: the create card if this browser
-  // never asked, otherwise whatever state its ticket is in.
+  // If the account expires while profile setup is open, return to sign-in.
   function afterProfileNeedsTicket() {
-    const T = window.WS_Ticket;
-    if (T.id()) {
-      if (T.status() === "denied") stepDenied();
-      else if (T.status() === "needspass") stepSetPassword();
-      else { stepPending(); checkTicket(false); }
-      return;
-    }
-    stepCreateTicket();
+    stepCreateAccount("", window.WS_Ticket?.username() ? "login" : "register");
   }
 
   // "Create your ticket": the flip card (ticketcard.js). FRONT = username,
@@ -794,7 +879,7 @@
 
   // Approved: gate-only closes; a first-timer goes on to whichever part of
   // step 1 is left (the profile, in ticket-first order) and then the tour.
-  function ticketApproved(msg = "Your ticket was approved.") {
+  function ticketApproved(msg = "Your account is ready.") {
     approvedHere = true;
     stopPoll();
     spot = null;
@@ -804,14 +889,24 @@
                : "Next up: set up your profile.";
     setCard({
       step: 0,
-      title: "You're in!",
-      html: `<p>${escapeHTML(msg)}</p><p>${next}</p>`,
+      title: msg === "Welcome back." ? "You're signed in!" : "Account created!",
+      html: `<p>${escapeHTML(msg)}</p>${ticketBox()}<p class="wst-note">Keep your username and password safe. The account ID is for reference and cannot be used to sign in.</p><p>${next}</p>`,
     });
-    setStatus("Ticket approved.", true);
-    if (gateOnly) { setTimeout(closeGate, 1100); return; }
+    wireTicketBox();
+    setStatus("Account connected.", true);
+    if (gateOnly) {
+      if (!profileSetUp()) {
+        gateOnly = false;
+        setupOnly = true;
+        stepSetup();
+      } else {
+        setTimeout(closeGate, 1100);
+      }
+      return;
+    }
     // (Re-checked after the pause: if the ticket got revoked meanwhile, the
     // ticket screen is back up and must not be painted over.)
-    if (!profileFirstDone) { setTimeout(() => { if (!ticketNeeded()) stepSetup(); }, 1400); return; }
+    if (!profileFirstDone) { setTimeout(() => { if (!accountNeeded()) stepSetup(); }, 1400); return; }
     continueTour();
   }
 
@@ -877,9 +972,9 @@
   function ticketBox() {
     return `
       <div class="wst-ticket">
-        <span class="wst-ticket-label">Your ticket</span>
+        <span class="wst-ticket-label">Your account ID</span>
         <code class="wst-ticket-id">${escapeHTML(window.WS_Ticket.id())}</code>
-        <button type="button" class="wst-copy" title="Copy ticket id">Copy</button>
+        <button type="button" class="wst-copy" title="Copy account ID">Copy</button>
       </div>`;
   }
 
@@ -1324,7 +1419,7 @@
     { sel: ["#fav-btn"], title: "Favorites",
       html: "<p>Shows <b>only your favorites</b>, in the order you added them. Star any asset with its ☆ to add it. Click again to see everything.</p>" },
     { sel: ["#pfp"], title: "Your profile",
-      html: "<p>Change your picture, banner and nickname here. Your username stays the same: it's on your ticket.</p>" },
+      html: "<p>Change your picture, banner and nickname here. Your account username stays the same.</p>" },
   ].map((item) => ({ ...item, group: "Header", step: 5 }));
 
   const FOOTER_TOUR = [
@@ -1334,16 +1429,16 @@
       html: "<p>Opens the <b>DMCA policy</b> in a new tab. If you own something hosted here and want it taken down, it explains what a notice needs and files the request for you.</p>" },
     { text: ["Discord"], title: "Discord",
       html: "<p>Opens the WannaSmile <b>Discord</b> page in a new tab: news, help, and people to connect with. The server isn't open yet, so it also links to Ankom Studios' other pages in the meantime.</p>" },
-    { text: ["Import Data", "Export Data", "Transfer Data"], title: "Your data lives in this browser",
-      html: "<p>There are no accounts to log in to. Everything you set up is saved <b>only in this browser</b>: your access ticket (and its secret key), username and nickname, profile picture and banner, favorites, themes and their shortcuts, widgets, gif packs, and your cloak and panic settings.</p><p>Clearing your browser data, or <b>☰ → Clear My Data</b>, wipes it. These three links are how you keep it safe or take it somewhere else.</p>" },
+    { text: ["Import Data", "Export Data", "Transfer Data"], title: "Your settings live in this browser",
+      html: "<p>Your account is stored securely by WannaSmile; most settings stay <b>in this browser</b>: your nickname, profile picture and banner, favorites, themes and their shortcuts, widgets, gif packs, and cloak and panic settings.</p><p>Clearing browser data signs you out on this device. <b>☰ → Clear My Data</b> clears local settings but keeps your account signed in. These links let you back up or move your settings.</p>" },
     { text: ["Export Data"], title: "Export Data",
-      html: "<p>Downloads everything as one file, <b>ExportData.ws</b>. Keep it somewhere safe: it's your backup, and it's how you move to another browser or device.</p><p>It holds your ticket's <b>secret key</b>, so treat it like a password and don't share it. Anyone with it can get in as you.</p>" },
+      html: "<p>Downloads everything as one file, <b>ExportData.ws</b>. Keep it somewhere safe: it's your backup, and it's how you move your settings to another browser or device.</p><p>It contains your account session. Treat it like a password and don't share it: anyone with the file can use that session until it expires.</p>" },
     { text: ["Import Data"], title: "Import Data",
-      html: "<p>Loads an <b>ExportData.ws</b> back in, then reload the page to see it. The file's ticket is checked with the server first and only taken if it's valid, so a broken or edited file can't break your access; your other settings still come across.</p><p>On a new device, use <b>I have a data file</b> on the ticket screen instead: it does the same and lets you straight in.</p>" },
+      html: "<p>Loads an <b>ExportData.ws</b> back in, then reload the page to see it. The account session is checked with the Worker before it is imported; other settings still come across if the session has expired.</p><p>On a new device, you can import the file or sign in with your username and password.</p>" },
     { text: ["Transfer Data"], title: "Transfer Data",
-      html: "<p>Copies a <b>link</b> with all your data packed inside. Open it in another browser and everything comes over, ticket included (checked with the server, same as a file).</p><p>That link is just as private as the file: don't post it or send it to anyone else.</p>" },
+      html: "<p>Copies a <b>link</b> with your data packed inside. Open it in another browser and your settings come over; the account session is checked with the Worker.</p><p>That link is as sensitive as your account session: don't post it or send it to anyone else.</p>" },
     { sel: ["#footerVersion"], title: "Version",
-      html: "<p>Which version of the site you're on. The code in brackets is the latest update: click it to see exactly what changed on GitHub.</p>" },
+      html: "<p>Which version of the site you're on: the name, then the version number in brackets.</p>" },
   ].map((item) => ({ ...item, group: "Footer", step: 6, scroll: true }));
 
   const TOUR_ITEMS = HEADER_TOUR.concat(FOOTER_TOUR);
@@ -1513,59 +1608,23 @@
   // Tour done (or skipped) but the profile never saved: just that step,
   // then the layer closes.
   async function startSetupOnly() {
-    if (active || profileSetUp() || ticketNeeded()) return;
+    if (active || profileSetUp() || accountNeeded()) return;
     await window.WS_WordFilter?.load();
     gateOnly = true;          // no step dots: this isn't the tour
     setupOnly = true;
     if (begin()) stepSetup();
   }
 
-  // Ticket screens: no approved ticket in this browser. The Welcome step
-  // is the request form for someone who's never asked; otherwise it's the
-  // matching status card.
-  //
-  // No ticket in this browser -> "Create your ticket" (its "I have a data
-  // file" button opens the upload pop-up); the profile setup follows
-  // approval. A repeat request from the same browser just gets its
-  // existing ticket back from the server, so there's no separate path.
-  // ?type=ticketinfo only changes the wording (instant vs. queued).
+  // Account gate for a visitor without a valid Worker session.
   async function openGate() {
-    if (!ticketNeeded()) return;
+    if (!accountNeeded()) return;
     gateOnly = !pending;
     begin();
-    const T = window.WS_Ticket;
-    if (T.id()) {
-      if (T.status() === "denied") { stepDenied(); return; }
-      if (T.status() === "needspass") { stepSetPassword(); return; }
-      stepPending();
-      checkTicket(false);
-      return;
-    }
-    setCard({ step: 0, title: "Welcome to WannaSmile!", html: "<p>One sec…</p>" });
-    // The word list comes in before the first screen, alongside the
-    // instant-vs-queued check (wordfilter.js gives up after a few seconds).
-    // None of these may hold the form back: each one is capped, a failure
-    // counts as "no answer" (the form just says tickets are checked by
-    // hand), and the form always opens. Before, one request that never
-    // came back left new people on "One sec…" for good.
-    const capped = (work, ms) => Promise.race([
-      Promise.resolve().then(() => work).catch(() => null),
-      new Promise((r) => setTimeout(() => r(null), ms)),
-    ]);
     try {
-      const [auto] = await Promise.all([
-        capped(T.info(), 9000),
-        capped(window.WS_WordFilter?.load(), 6000),
-        capped(window.WS_WordFilter?.loadUsernames(), 6000),
-        capped(ensureTicketCard(), 6000),
-      ]);
-      autoApprove = typeof auto === "boolean" ? auto : null;
-    } catch (_) { autoApprove = null; }
-    try {
-      stepCreateTicket();
+      stepCreateAccount();
     } catch (err) {
-      console.error("[tutorial] couldn't draw the ticket form:", err);
-      setCard({ step: 0, title: "Welcome to WannaSmile!", html: "<p>Something went wrong loading the ticket form. Reload the page and try again.</p>" });
+      console.error("[tutorial] couldn't draw the account form:", err);
+      setCard({ step: 0, title: "Welcome to WannaSmile!", html: "<p>Something went wrong loading account setup. Reload the page and try again.</p>" });
     }
   }
 
@@ -1638,7 +1697,7 @@
   // screen instead.
   function replay() {
     if (active) return;
-    if (ticketNeeded()) { openGate(); return; }
+    if (accountNeeded()) { openGate(); return; }
     gateOnly = false;
     const dash = $("#dashboardMenu");
     if (dash && dash.style.display === "block") $("#dashboardBtn")?.click();
@@ -1655,7 +1714,7 @@
   // No approved ticket: nothing can load, so the ticket screens go up
   // straight away instead of waiting for assets like the tour does.
   document.addEventListener("ws:ticket-gate", openGate);
-  if (ticketNeeded()) {
+  if (accountNeeded()) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", openGate, { once: true });
     else openGate();
   }

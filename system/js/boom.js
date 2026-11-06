@@ -1,4 +1,4 @@
-const WS_BOOM_AUDIO_ICON_BASE = new URL("../../assets/gifs/audio-btn/", document.currentScript?.src || location.href);
+const WS_BOOM_AUDIO_ICON_BASE = new URL("https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/audio-btn/");
 
 (function () {
   const muted = localStorage.getItem("ws_muted") === "true";

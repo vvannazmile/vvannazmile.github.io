@@ -1,16 +1,13 @@
 
 (function () {
   "use strict";
-  const ASSET_ROOT = new URL("../../assets/", document.currentScript?.src || location.href);
 
   const DATA_KEYS = [
     "ws_favorites",   // ordered favorites list (main.js initFavorites)
-    // Access ticket (ticket.js), secret key included — the exported data file
-    // is how a ticket gets to another browser (the tutorial's "I have a data
-    // file"). (Clear My Data only drops the id/status/key, and only
-    // temporarily — see CLEARABLE_KEYS.)
-    "ws_ticket_id", "ws_ticket_status", "ws_ticket_key", "ws_ticket_client", "ws_ticket_requested",
-    "ws_username",   // the ticket's permanent username (nickname is separate)
+    // Account session is included so an encrypted export can move this
+    // browser's sign-in. Clear My Data keeps it; only a sign-in reset removes it.
+    "ws_ticket_id", "ws_ticket_status", "ws_ticket_key",
+    "ws_username",   // the permanent account username (nickname is separate)
     // So a returning visitor restoring their data skips the tour.
     "ws_tutorial_version",
     "cloakEnabled", "cloakTitle", "cloakIcon",
@@ -22,7 +19,7 @@
     // profile.js's real keys (the two above are older names)
     "nickname", "profilePic", "pfpPixelated", "profileBanner", "pfpAlign", "pfpFrame", "pfpFrameScale", "pfpAvatarSize", "pfpShape", "pfpLayout", "pfpWrapper", "pfpWrapperOpacity", "pfAdvancedEdit", "ws_profile_setup",
     "welcomeNeverShow",
-    "ws_updates_seen",   // last "Updates & changes" release dismissed/read (updates.js)
+    "ws_updates_seen",   // last project update dismissed/read (updates.js)
     "searchEngine",
     "_realTitle", "_realFavicon",
     "ws_selected_widgets", "ws_active_widget", "ws_widgets_hidden",
@@ -49,11 +46,11 @@
   //
   // Older, unsealed exports (plain JSON, and old "#data=" links) still import,
   // but WITHOUT their credits/achievements: anyone could have edited those.
-  // (Their ticket is still checked with the server, as always.)
+  // (Their account session is still checked with the Worker.)
   const FILE_NAME   = "ExportData.ws";
   const FILE_FORMAT = "wannasmile-data";
   const FILE_ACCEPT = ".ws,.json,text/plain,application/json";
-  const TICKET_KEYS = ["ws_ticket_id", "ws_ticket_status", "ws_ticket_key", "ws_username"];
+  const ACCOUNT_KEYS = ["ws_ticket_id", "ws_ticket_status", "ws_ticket_key", "ws_username"];
   const CREDIT_KEYS = ["ws_credits", "ws_credit_log", "ws_achievements", "ws_unlocks"];
 
   const SEAL_PREFIX = "WSDATA1:";
@@ -139,24 +136,22 @@
     return withoutCredits(data);
   }
 
-  // Writes the known keys from a parsed file. A ticket in the file is only
-  // taken if the server accepts its id + key right now (so a hand-edited
-  // file can't plant a junk ticket); otherwise the rest still imports.
-  // Returns { count, ticket: "approved"|"pending"|"denied"|"needspass"|"unknown"|"" }.
-  // `known`: the ticket's status if the caller already checked it. Throws if
-  // the server can't be reached (so that never looks like a bad ticket).
+  // Writes the known keys from a parsed file. An account session is only
+  // taken if the Worker accepts its id + key right now; otherwise other data
+  // still imports. `known` is the status if already checked and may throw when
+  // the Worker can't be reached (so that never looks like an invalid account).
   async function applyData(data, known) {
-    let ticket = "";
-    let takeTicket = false;
+    let account = "";
+    let takeAccount = false;
     if (data.ws_ticket_id && window.WS_Ticket) {
-      ticket = known || await window.WS_Ticket.verify(data.ws_ticket_id, data.ws_ticket_key);
-      takeTicket = ticket === "approved" || ticket === "pending" || ticket === "denied" || ticket === "needspass";
+      account = known || await window.WS_Ticket.verify(data.ws_ticket_id, data.ws_ticket_key);
+      takeAccount = account === "approved";
     }
     let count = 0;
     DATA_KEYS.forEach(k => {
       if (!(k in data) || CREDIT_KEYS.includes(k)) return;
-      if (TICKET_KEYS.includes(k) && !takeTicket) return;
-      localStorage.setItem(k, k === "ws_ticket_status" ? ticket : data[k]);
+      if (ACCOUNT_KEYS.includes(k) && !takeAccount) return;
+      localStorage.setItem(k, k === "ws_ticket_status" ? account : data[k]);
       count++;
     });
     // Credits come in as one unit: the balance never arrives without the
@@ -168,7 +163,7 @@
         else localStorage.removeItem(k);
       });
     }
-    return { count, ticket };
+    return { count, account };
   }
 
   function readFileText(file) {
@@ -199,7 +194,7 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    if (typeof showToast === "function") showToast(`✅ Data exported as ${FILE_NAME}. Keep it safe: it holds your access ticket.`);
+    if (typeof showToast === "function") showToast(`✅ Data exported as ${FILE_NAME}. Keep it safe: it contains your account session.`);
   }
 
   function importData() {
@@ -210,8 +205,8 @@
       const file = input.files[0];
       if (!file) return;
       try {
-        const { count, ticket } = await applyData(await parseDataFile(await readFileText(file)));
-        const note = ticket === "unknown" ? " (its ticket wasn't valid, so your current one was kept)" : "";
+        const { count, account } = await applyData(await parseDataFile(await readFileText(file)));
+        const note = account === "unknown" ? " (its account session wasn't valid, so your current one was kept)" : "";
         if (typeof showToast === "function") showToast(`✅ Imported ${count} setting(s)${note}. Reload to apply.`);
       } catch {
         if (typeof showToast === "function") showToast("❌ Couldn't import that file: it isn't a WannaSmile data file, or it's been changed.");
@@ -285,7 +280,7 @@
     // Paging settings (paging.js, the Settings page)
     "ws_paging_layout", "sortMode", "ws_alpha_scope", "ws_filter_scope", "ws_search_scope", "ws_flip_align", "ws_data_cache_on", "ws_bundle_tilt", "ws_bundle_hide",
     // Credits & achievements (ws_credits, ws_credit_log, ws_achievements,
-    // ws_unlocks, ws_rated, ws_link_visits) are KEPT, like the ticket: the
+    // ws_unlocks, ws_rated, ws_link_visits) are KEPT, like the account session: the
     // "R u Sure?" modal promises it, and it's safe because credits.js pays
     // each achievement once by id (award() answers false if already earned),
     // so the tutorial restarting below can't be farmed for credits.
@@ -301,26 +296,9 @@
     // Early access (main.js): which tester assets were already announced,
     // and the list kept for the credits page.
     "ws_tester_seen", "ws_tester_assets",
-    // The access ticket (id, status, key, username) is NOT cleared: it's the
-    // user's one ticket, so after a clear they skip the ticket screens and
-    // go straight to setting up their profile (the tour starts over).
+    // The account session remains signed in while local profile/settings data
+    // is cleared.
   ];
-
-  // Start over with a NEW ticket (a different username). Everything is erased
-  // except one small breadcrumb, ws_ticket_lineage = { id, name }: the ticket
-  // this browser held. It has no secret key (it can't be used to get in), and
-  // ticket.js sends its id with the next ticket request so the server can log
-  // the new username in the same "account tree" as the old one.
-  function wipeForNewTicket() {
-    try {
-      const id = localStorage.getItem("ws_ticket_id") || "";
-      const name = localStorage.getItem("ws_username") || "";
-      if (id) localStorage.setItem("ws_ticket_lineage", JSON.stringify({ id, name, at: new Date().toISOString() }));
-    } catch (_) {}
-    [...DATA_KEYS, ...CLEARABLE_KEYS, "ws_ticket_backup"].forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
-    try { window.WS_DataCache?.clear(); } catch (_) {}
-    try { indexedDB.deleteDatabase("ws_library"); } catch (_) {}   // saved library file (main.js)
-  }
 
   async function clearData() {
     // Close the ☰ menu first so the modal isn't fighting it for focus.
@@ -331,33 +309,15 @@
       ? await window.WSRuSure.ask({
           title:   "R u Sure?",
           body:    "clearing your data removes your favorites, saved profile, banner, and etc!",
-          keep:    "you keep: ur existing ticket, username & credits..",
+          keep:    "your account stays signed in; your account ID and credits are kept",
           cancel:  "no take me back!",
           confirm: "yes clear data",
           danger:  true,
         })
-      : window.confirm("Clear all your saved data?\n\nYou keep your ticket, username and credits.\n\nThis cannot be undone.");
+      : window.confirm("Clear all your saved data?\n\nYour account stays signed in; your account ID and credits are kept.\n\nThis cannot be undone.");
     if (!confirmed) return;
 
-    // Second question: keep this ticket, or erase it too and begin a new one
-    // under a different username (the old username stays logged next to it).
-    let startOver = false;
-    if (localStorage.getItem("ws_ticket_id")) {
-      const oldName = localStorage.getItem("ws_username") || "your ticket";
-      startOver = window.WSRuSure
-        ? await window.WSRuSure.ask({
-            title:   "New ticket too?",
-            body:    `you can also erase ${oldName} from this browser and start over with a different username.`,
-            keep:    "your old username stays linked to the new one in our records.",
-            cancel:  "no, keep my ticket",
-            confirm: "yes, new username",
-            danger:  true,
-          })
-        : window.confirm(`Also erase ${oldName} from this browser and start a new ticket with a different username?\n\nYour old username stays linked to the new one in our records.`);
-    }
-
-    if (startOver) wipeForNewTicket();
-    else CLEARABLE_KEYS.forEach(k => localStorage.removeItem(k));
+    CLEARABLE_KEYS.forEach(k => localStorage.removeItem(k));
     try { indexedDB.deleteDatabase("ws_library"); } catch (_) {}   // saved library file (main.js)
 
     try {
@@ -365,10 +325,10 @@
       if (htmlTitle) document.title = htmlTitle.textContent || document.title;
 
       const favLink = document.querySelector("link[rel~='icon']");
-      if (favLink) favLink.href = favLink.dataset.realHref || "/favicon.ico";
+      if (favLink) favLink.href = favLink.dataset.realHref || "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/favicons/ico.png";
 
       const cloakImg = document.querySelector("#cloak-btn img");
-      if (cloakImg) cloakImg.src = new URL("images/cloak-btn/visable.png", ASSET_ROOT).href;
+      if (cloakImg) cloakImg.src = "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/cloak-btn/visable.png";
 
       // (This used to set html[theme]="redux" too. themify.js watches that
       // attribute and fetches the theme's assets the moment it changes, so a
@@ -376,7 +336,7 @@
       // theme anyway, since the "theme" key is gone.)
     } catch {}
 
-    if (typeof showToast === "function") showToast(startOver ? "🗑️ Data erased. Reloading for your new ticket…" : "🗑️ Data cleared. Reloading…");
+    if (typeof showToast === "function") showToast("🗑️ Data cleared. Reloading…");
     setTimeout(() => location.reload(), 1200);
   }
 

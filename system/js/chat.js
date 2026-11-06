@@ -1,35 +1,31 @@
 "use strict";
 
 // ── WannaChat ──────────────────────────────────────────────────────────
-// Friends + direct messages for people who already have an access ticket.
+// Friends + direct messages for signed-in WannaSmile accounts.
 //
-//  • No login of its own and no exported data file: the page reads the
-//    ticket this browser already holds (ticket.js: ws_ticket_id / key /
-//    status / ws_username) and the Apps Script works out the real username
-//    from that ticket, so nobody can chat as somebody else.
-//  • Talks only to the DATA Apps Script (window.WS_ENDPOINTS.data, see
-//    data.gs "WannaChat"): GET ?type=chat to read, POST { type:"chat" } to
-//    act. No websocket; the page polls, and an idle poll is a tiny cached
-//    answer ("unchanged"). The optional websocket worker lives in
-//    documentation/websocket/ and is not used here.
+//  • The page uses the account session (ws_ticket_id / key / status /
+//    ws_username). The Worker resolves the username from the session.
+//  • The Worker handles GET ?type=chat and POST { type:"chat" } actions.
+//    No websocket; the page polls, and an idle poll is a tiny cached
+//    answer ("unchanged").
 //  • Friend requests: send → they Accept (or Decline) → then you can chat.
 //    The newest 60 messages per friendship are kept; older ones are deleted
 //    by the server as new ones arrive.
-//  • GLOBAL CHAT: a room pinned at the top of the list that every approved
-//    ticket can read and post in, no friend request needed (data.gs
-//    "global room": GET &room=global, POST send {room:"global"}). It's how
+//  • GLOBAL CHAT: a room pinned at the top of the list that every account
+//    can read and post in, no friend request needed (GET &room=global,
+//    POST send {room:"global"}). It's how
 //    people meet: click anyone's name or picture in it to add them as a
 //    friend, then talk privately. It's the pseudo-conversation GLOBAL
 //    ("#global") in state.active; a real username can never start with "#".
 //  • msgcore.js (WS_Msg) is shared with the rest of the site. This page hands
 //    it every poll answer; in return it supplies profile pictures and display
-//    names, the real "is typing" state (and the column-C typing quotes),
+//    names, the real "is typing" state (and local JSON typing quotes),
 //    unread/seen bookkeeping and the notification cards. #with=<username> in
 //    the address opens that conversation (that's where a notification click
 //    lands).
 (() => {
   const $ = (id) => document.getElementById(id);
-  const API = window.WS_ENDPOINTS && window.WS_ENDPOINTS.data;
+  const API = window.WS_ENDPOINTS && window.WS_ENDPOINTS.chat;
   const M = window.WS_Msg || null;        // optional: the page still works as plain chat without it
 
   const K = { id: "ws_ticket_id", key: "ws_ticket_key", status: "ws_ticket_status", user: "ws_username", seen: "ws_chat_seen" };
@@ -113,8 +109,7 @@
   }
 
   async function post(action, extra) {
-    // No Content-Type header: a text/plain body is a "simple" request, so
-    // there's no CORS preflight (Apps Script can't answer one).
+    // Send JSON without custom headers; the Worker accepts this simple request.
     const res = await fetch(API, {
       method: "POST", cache: "no-store",
       body: JSON.stringify({ type: "chat", action, ...creds(), ...extra }),
@@ -162,16 +157,8 @@
       state.fails = 0;
 
       if (!data || data.ok !== true) {
-        // An older data.gs doesn't know ?type=chat and answers with the
-        // assets list instead.
-        if (Array.isArray(data) || (data && Array.isArray(data.items)) || (data && !data.code && !data.error)) {
-          return gate("Chat isn't switched on yet", "The data script hasn't been updated for WannaChat. Redeploy data.gs (WS-DATA-08 or newer) and reload this page.", "Back to WannaSmile");
-        }
-        if (data && data.code === "ticket") {
-          return gate("Your ticket can't chat", "Chat needs your own approved access ticket, with its key. If you moved browsers, re-import your data on WannaSmile first.", "Back to WannaSmile");
-        }
-        if (data && data.error === "Ticket required.") {
-          return gate("Sign in first", "This browser's ticket isn't approved (or was removed). Open WannaSmile and finish the ticket step.", "Go to WannaSmile");
+        if (data && (data.code === "account" || data.error === "Ticket required.")) {
+          return gate("Sign in to chat", "Create an account or sign in on the WannaSmile homepage, then return here.", "Go to WannaSmile");
         }
         throw new Error((data && data.error) || "Unexpected reply");
       }
@@ -191,7 +178,7 @@
         // An answer meant for another conversation (the person switched while it
         // was in flight) is skipped; the refresh queued by open() follows it.
         if (asked === GLOBAL) {
-          // No `global` in the answer = a data.gs from before the global room.
+          // A missing global room indicates an unexpected Worker response.
           state.globalOff = !data.global;
           if (data.global) {
             state.max = data.global.max || 120;
@@ -429,7 +416,7 @@
     // Global chat is always first: open to everyone, no friend needed.
     list.append(el("button", { class: "conv-row global" + (inGlobal() ? " on" : ""), type: "button", onclick: () => open(GLOBAL) },
       el("span", { class: "ws-av global-av", "aria-hidden": "true" }, icon("fa-solid fa-earth-americas")),
-      el("span", { class: "tx" }, el("span", { class: "nm", text: "Global chat" }), el("span", { class: "pv", text: "Everyone with a ticket · no friend request needed" }))
+      el("span", { class: "tx" }, el("span", { class: "nm", text: "Global chat" }), el("span", { class: "pv", text: "Everyone with an account · no friend request needed" }))
     ));
 
     if (incoming.length) {
@@ -489,7 +476,7 @@
     $("removeBtn").hidden = inGlobal();
     $("msg").placeholder = inGlobal() ? "Message everyone… (Enter to send)" : "Message… (Enter to send)";
     $("keepNote").textContent = inGlobal()
-      ? `global chat is public to everyone with a ticket · only the latest ${state.max} messages are kept`
+      ? `global chat is open to everyone with an account · only the latest ${state.max} messages are kept`
       : `only the latest ${state.max} messages are kept`;
     paintTyping();
     renderThread(false);
@@ -503,7 +490,7 @@
     const line = on ? typingLine(state.active) : "";
     if (sub) {
       sub.className = on ? "typing" : "";
-      sub.textContent = on ? line : inGlobal() ? "Everyone with a ticket can read and post here" : state.active ? "@" + state.active : "";
+      sub.textContent = on ? line : inGlobal() ? "Everyone with an account can read and post here" : state.active ? "@" + state.active : "";
     }
     if (!row) return;
     if (!on) { if (row.firstChild) row.textContent = ""; return; }
@@ -524,7 +511,7 @@
     $("cap").textContent = n ? `${Math.min(n, state.max)}/${state.max}` : "";
     if (!n) {
       box.append(el("div", { class: "empty", text: state.globalOff && inGlobal()
-        ? "Global chat isn't switched on yet. Redeploy data.gs (WS-DATA-15 or newer) and reload this page."
+        ? "Global chat is unavailable right now. Try again in a moment."
         : inGlobal() ? "Nobody has said anything yet. Say hi to everyone!" : `Say hi to ${shown(state.active)}!` }));
       return;
     }
@@ -563,7 +550,7 @@
     const n = detail && detail.unread ? detail.unread.length : 0;
     $("unreadBadge").hidden = !n;
     $("unreadBadge").textContent = String(n);
-    document.title = (n ? `(${n}) ` : "") + "Messages · WannaSmile4Evr";
+    document.title = (n ? `(${n}) ` : "") + "WannaSmile | Messages";
   }
 
   // ── the little menu on a name in global chat ──────────────────────────
@@ -617,11 +604,10 @@
   function start() {
     if (!API) return gate("Chat can't start", "The site's data address (endpoints.js) is missing.", "Back to WannaSmile");
 
-    const approved = read(K.status) === "approved" && !!read(K.id);
-    if (!approved) return gate("Sign in first", "WannaChat uses the access ticket this browser already has. Open WannaSmile4Evr, finish the ticket step, then come back here.", "Go to WannaSmile");
-    if (!read(K.key)) return gate("Your ticket can't chat", "This ticket has no key, so chat can't tell it's really you. Re-import your data on WannaSmile (or request a new ticket) and try again.", "Back to WannaSmile");
+    const approved = read(K.status) === "approved" && !!read(K.id) && !!read(K.key);
+    if (!approved) return gate("Sign in to chat", "Create an account or sign in on the WannaSmile homepage, then return here.", "Go to WannaSmile");
 
-    // The username is on hand straight away from the signed-in ticket; the
+    // The username is on hand straight away from the signed-in account; the
     // server's answer (state.me) replaces it once the first poll lands.
     state.me = read(K.user).toLowerCase();
     $("app").hidden = false;
@@ -650,9 +636,9 @@
     document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(false); markActiveSeen(); renderFriends(); } });
     window.addEventListener("focus", () => { refresh(false); markActiveSeen(); renderFriends(); });
     window.addEventListener("online", () => { state.fails = 0; refresh(true); });
-    // Signing out (or a revoked ticket) in another tab ends this chat.
+    // Signing out (or an expired session) in another tab ends this chat.
     window.addEventListener("storage", (e) => {
-      if (e.key === K.status && e.newValue !== "approved") gate("Sign in first", "Your ticket isn't approved any more. Open WannaSmile to sort that out.", "Go to WannaSmile");
+      if (e.key === K.status && e.newValue !== "approved") gate("Sign in to chat", "Your account session ended. Sign in on the WannaSmile homepage, then return here.", "Go to WannaSmile");
       else if (e.key === K.seen) renderFriends();
     });
   }

@@ -1,6 +1,6 @@
 ![WannaSmile Banner](https://raw.githubusercontent.com/vvannazmile/vvannazmile.github.io/main/assets/images/pages/release/more-hollows.png)
 
-<h1 align="center">Wanna Smile: More Hollows</h1>
+<h1 align="center">WannaSmile: Nexus</h1>
 
 <p align="center">
   <strong><em>"a cure to boredom"</em> -smiledemic</strong>
@@ -23,9 +23,9 @@
 </p>
 
 
-# V2.3.0
+# V2.4.0
 
-More Hollows is finalized, with a new profile display system, global chat, a SQL-backed library, trails, and updated loading methods. Apps Script endpoints are disabled in this development build.
+Description here.
 
 ### In the Works
 

@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script src="../../js/desktop.js"></script>
-<link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/favicon.png" />
-<title>Messages · WannaSmile4Evr</title>
+<link id="favicon" rel="icon" type="image/png" href="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/favicons/ico.png" />
+<title>WannaSmile | Messages</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
 <style>
@@ -197,7 +197,7 @@ div.conv-row { cursor: default; }
 
 <body>
 <header class="topbar">
-  <a class="back" href="../index/index.html" title="Back to WannaSmile"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>WannaSmile</span></a>
+  <a class="back" href="../../../" title="Back to WannaSmile"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>WannaSmile</span></a>
   <h1 id="chatTitle">Messages<span class="badge" id="unreadBadge" hidden>0</span></h1>
   <span class="status sync" id="net" role="status">Connecting</span>
 </header>
@@ -206,9 +206,9 @@ div.conv-row { cursor: default; }
 <section class="gate" id="gate" hidden aria-live="polite">
   <h2><i class="fa-solid fa-lock" aria-hidden="true"></i> <span id="gateTitle">Sign in first</span></h2>
   <div class="row">
-    <p id="gateText">WannaChat uses the access ticket this browser already has. Open WannaSmile4Evr and finish the ticket step, then come back.</p>
-    <a class="btn" id="gateBtn" href="../index/index.html"><i class="fa-solid fa-house" aria-hidden="true"></i> Go to WannaSmile</a>
-  </div>
+    <p id="gateText">Create an account or sign in on the WannaSmile homepage, then return here.</p>
+    <a class="btn" id="gateBtn" href="../../../"><i class="fa-solid fa-house" aria-hidden="true"></i> Go to WannaSmile</a>
+ </div>
 </section>
 
 <!-- Inbox -->
@@ -217,7 +217,7 @@ div.conv-row { cursor: default; }
     <aside class="side" aria-label="Conversations">
       <div class="pf">
         <span id="meAvatar" aria-hidden="true"></span>
-        <div class="who"><b id="meName">…</b><small id="meUser">signed in with your ticket</small></div>
+        <div class="who"><b id="meName">…</b><small id="meUser">signed in with your account</small></div>
       </div>
       <form class="add" id="addForm" autocomplete="off">
         <input type="text" id="addName" placeholder="Add a friend by username" maxlength="21" spellcheck="false" aria-label="Friend's username" />

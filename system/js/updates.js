@@ -1,12 +1,12 @@
 "use strict";
 
-// "Updates & changes" announcement modal. It opens by itself whenever the
+// Project updates notice. It opens by itself whenever the
 // site has a new update, meaning the latest commit on the live repo's main
 // branch is not the one this visitor last dismissed or read (ws_updates_seen
 // holds that commit's full sha, see data.js). So every new commit brings it
 // back, and one visitor dismissing it never hides the next update.
-//   - "Don't show again" / "Tell me all about it!" mark the current commit
-//     as seen ("Tell me all about it!" also opens the news page).
+//   - "Don't show again" / "View all updates" mark the current commit
+//     as seen ("View all updates" also opens the news page).
 //   - The backdrop and Escape close it for this viewing only.
 //   - The commit comes from window.WS_LatestCommit (ui.js, shared with the
 //     footer label). If GitHub can't be reached (offline, rate limit) the

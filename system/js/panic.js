@@ -1,4 +1,4 @@
-const WS_PANIC_ASSET_BASE = new URL("../../assets/images/panic-btn/", document.currentScript?.src || location.href);
+const WS_PANIC_ASSET_BASE = new URL("https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/panic-btn/", document.currentScript?.src || location.href);
 
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("nes-btn");

@@ -974,24 +974,31 @@
 }
 
 /* ── Homepage profile modal: the card on its own, buttons underneath ── */
-.pfm{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;
+.pfm{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
   background:radial-gradient(circle,rgba(255,255,255,.12) 1.5px,transparent 2px) 0 0/22px 22px,rgba(0,0,0,.45);
   backdrop-filter:blur(9px) saturate(1.3);-webkit-backdrop-filter:blur(9px) saturate(1.3);outline:none}
 .pfm.visible{display:flex;animation:pfm-fade .25s ease}
 @keyframes pfm-fade{from{opacity:0}}
-.pfm-stage{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:100%}
-.pfm-card{width:min(600px,96vw);height:var(--pfm-h,420px);transition:width .32s cubic-bezier(.2,.9,.3,1),height .25s ease,opacity .2s ease}
-.pfm[data-stage="edit"] .pfm-card{width:min(1020px,96vw)}
+.pfm-effects{position:fixed;inset:0;z-index:0;display:block;width:100vw;height:100vh;pointer-events:none}
+.pfm-effects[hidden]{display:none}
+.pfm-stage{position:relative;z-index:1;display:flex;flex:0 0 auto;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:100%;margin:auto}
+.pfm-card{width:min(600px,calc(100vw - 24px));height:var(--pfm-h,420px);max-height:calc(100vh - 88px);max-height:calc(100dvh - 88px);transition:opacity .2s ease}
+.pfm[data-stage="edit"] .pfm-card{width:min(1020px,calc(100vw - 24px))}
 .pfm-card[data-loading="true"]{opacity:0}
 .pfm.visible .pfm-card:not([data-loading="true"]){animation:pfm-pop .35s cubic-bezier(.3,1.4,.5,1)}
 @keyframes pfm-pop{from{transform:scale(.92);opacity:0}}
 .pfm-frame{display:block;width:100%;height:100%;border:0;background:transparent;color-scheme:dark}
-.pfm-actions{display:flex;gap:10px;justify-content:center}
-.pfm-btn{min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;cursor:pointer;
+.pfm-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.pfm-btn{min-width:min(130px,calc(50vw - 20px));min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;cursor:pointer;
   font:700 14px monospace;color:var(--url-color,#fff);background:var(--aside-bg,rgba(0,0,0,.92));
   border:2px solid var(--accent-color,#f44);border-radius:12px;box-shadow:3px 3px 0 var(--accent-color,#f44);transition:transform .12s ease,opacity .15s ease}
 .pfm-btn:hover:not(:disabled){transform:translate(-1px,-1px)}
 .pfm-btn:focus-visible{outline:2px solid var(--url-color,#fff);outline-offset:3px}
 .pfm-btn:disabled{opacity:.55;cursor:wait}
 .pfm-btn-primary{background:color-mix(in srgb,var(--accent-color,#f44) 22%,rgba(0,0,0,.9))}
+@media (max-width:560px){
+  .pfm-card,.pfm[data-stage="edit"] .pfm-card{width:calc(100vw - 16px)}
+  .pfm-actions{width:100%;gap:8px}
+  .pfm-btn{flex:1 1 0;padding-inline:8px}
+}
 @media (prefers-reduced-motion:reduce){.pfm.visible,.pfm.visible .pfm-card{animation:none}.pfm-card{transition:none}}

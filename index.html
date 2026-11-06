@@ -4,31 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script>
-// This file is written for system/pages/index/. Anywhere else (e.g. the site
-// root, beside system/) a <base> makes every relative URL resolve as if it
-// were there, so the same file runs in both places. WS_SITE_ROOT is the
-// directory that holds system/ and assets/.
+// This file lives at the site root, beside system/ and assets/.
+// WS_SITE_ROOT is the directory that holds system/ and assets/.
 (function () {
-  var home = "system/pages/index/";
-  var inHome = /\/system\/pages\/index\/(?:index\.html)?$/.test(location.pathname);
-  var base = inHome ? new URL(".", location.href).href : new URL(home, location.href).href;
-  window.WS_SITE_ROOT = new URL("../../../", base).href;
-  if (inHome) return;
-  var el = document.createElement("base");
-  el.href = base;
-  document.head.insertBefore(el, document.head.firstChild);
-  // With a <base>, href="#x" would point at the base page, so keep in-page anchors in-page.
-  document.addEventListener("click", function (e) {
-    var a = e.target.closest && e.target.closest("a[href^='#']");
-    if (!a || e.defaultPrevented) return;
-    e.preventDefault();
-    if (a.getAttribute("href").length > 1) location.hash = a.getAttribute("href");
-  });
+  window.WS_SITE_ROOT = new URL("./", location.href).href;
 })();
 </script>
-<script src="../../js/desktop.js"></script>
-<link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/ico.png"/>
-<title>WannaSmile | Home</title>
+<script src="system/js/desktop.js"></script>
+<link id="favicon" rel="icon" type="image/png" href="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/favicons/favicon.png" />
+<title>WannaSmile | Project Hub</title>
 
 <!-- Public library data is served by the SQL Worker. -->
 <link rel="preconnect" href="https://api.ankomstudios.com" crossorigin />
@@ -42,8 +26,8 @@
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" /></noscript>
 
 <!-- The disabled word-filter endpoint is configured before optional site scripts. -->
-<script src="../../js/endpoints.js"></script>
-<script src="../../js/wordfilter.js"></script>
+<script src="system/js/endpoints.js"></script>
+<script src="system/js/wordfilter.js"></script>
 
 <script>
 // Start the public SQL asset fetch now, while styles and scripts load.
@@ -72,15 +56,15 @@
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/themes/dark.css" /></noscript>
 <!-- Shoelace components (sl-alert for achievement pop-ups, credits.js). -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.9.0/cdn/shoelace-autoloader.js"></script>
-<link rel="stylesheet" href="../../css/main.css" />
-<link rel="stylesheet" href="../../css/widgets.css" />
-<link rel="stylesheet" href="../../css/shortcuts.css" />
-<link rel="stylesheet" href="../../css/daily.css" />
-<link rel="stylesheet" href="../../css/rusure.css" />
-<link rel="stylesheet" href="../../css/refer.css" />
-<link rel="stylesheet" href="../../css/tutorial.css" />
-<link rel="stylesheet" href="../../css/profile.css" />
-<link rel="stylesheet" href="../../css/updates.css" />
+<link rel="stylesheet" href="system/css/main.css" />
+<link rel="stylesheet" href="system/css/widgets.css" />
+<link rel="stylesheet" href="system/css/shortcuts.css" />
+<link rel="stylesheet" href="system/css/daily.css" />
+<link rel="stylesheet" href="system/css/rusure.css" />
+<link rel="stylesheet" href="system/css/refer.css" />
+<link rel="stylesheet" href="system/css/tutorial.css" />
+<link rel="stylesheet" href="system/css/profile.css" />
+<link rel="stylesheet" href="system/css/updates.css" />
 
 <script>
 // Preload whichever theme is actually cached as active (see themify.js's
@@ -107,7 +91,7 @@
 
   // Same local fallback as themify.js's _localizeSiteUrl: off the live host,
   // our own …github.io./assets/… URLs become this checkout's copy (this page
-  // sits in system/pages/index/, so the site root is three levels up).
+  // sits at the site root, so WS_SITE_ROOT is the page's own directory).
   var LIVE_SITE_RE = /^https?:\/\/(?:wannasmile4evr|vvannazmile)\.github\.io\.?\//i;
   var onLiveSite   = /^(?:wannasmile4evr|vvannazmile)\.github\.io\.?$/i.test(location.hostname);
   function localize(v) { return onLiveSite ? v : new URL(String(v).trim().replace(LIVE_SITE_RE, ""), new URL(window.WS_SITE_ROOT)).href; }
@@ -178,53 +162,53 @@
 <div id="topBar">
   <header>
     <nav class="nav-links">
-      <a href="." target="_blank">Home</a>
-      <a href="../discovery/index.html" target="_blank">Discovery</a>
-      <a href="../settings/index.html" target="_blank">Settings</a>
+      <a href="./" target="_blank">Home</a>
+      <a href="system/pages/discovery/index.html" target="_blank">Discovery</a>
+      <a href="system/pages/settings/index.html" target="_blank">Settings</a>
       <a href="https://padlet.com/ankomstudios/wannasmile4evr-s023ilquhanqla56127i" target="_blank">Suggestions</a>
       <!-- Ads and Partnerships: page not made yet. -->
       <!-- <a href="#" title="Coming soon">Ads and Partnerships</a> -->
       <div class="pages-anchor">
         <button class="arrowleft" onclick="prevPage()">
-          <img src="../../../assets/images/header-arrows/left-arrow.png" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-arrows/left-arrow.png" />
         </button>
         <span class="page-indicator">...</span>
         <button class="arrowright" onclick="nextPage()">
-          <img src="../../../assets/images/header-arrows/right-arrow.png" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-arrows/right-arrow.png" />
         </button>
-        <a href="../store/index.html" target="_blank">STORE</a>
-        <a href="../news/index.html" target="_blank">NEWS</a>
+        <a href="system/pages/store/index.html" target="_blank">STORE</a>
+        <a href="system/pages/news/index.html" target="_blank">NEWS</a>
 
         <button class="mute-btn">
-          <img src="../../../assets/images/audio-toggle-btn/mute.png" id="muteToggleImg" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/audio-toggle-btn/mute.png" id="muteToggleImg" />
         </button>
 
         <button class="Qtype">
-          <img src="../../../assets/images/qtypes-btn/Qleft.png" id="QtypeToggle" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/qtype/Qleft.png" id="QtypeToggle" />
         </button>
 
         <button id="nes-btn">
-          <img src="../../../assets/images/panic-btn/deny.png" alt="Toggle">
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/panic-btn/deny.png" alt="Toggle">
         </button>
 
 <button id="cloak-btn">
-  <img src="../../../assets/images/cloak-btn/cloaked.png" alt="CloakToggle">
+  <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/cloak-btn/cloaked.png" alt="CloakToggle">
 </button>
 
 <button id="fav-btn" title="Show favorites" aria-pressed="false">
-  <img src="../../../assets/images/fav-btn/unfav.gif" alt="Favorites toggle">
+  <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/fav-btn/unfav.gif" alt="Favorites toggle">
 </button>
 
         <button type="button" id="openDailyPicks" class="hdr-icon-btn" title="Daily picks" aria-label="Daily picks">
-          <img src="../../../assets/images/icons/daily.png" alt="" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-icons/daily.png" alt="" />
         </button>
 
         <button type="button" id="openShortCuts" class="hdr-icon-btn" title="Shortcuts" aria-label="Keyboard shortcuts">
-          <img src="../../../assets/images/icons/shortcuts.png" alt="" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-icons/shortcuts.png" alt="" />
         </button>
 
         <button type="button" id="openDm" class="hdr-icon-btn" title="Chat (DMs)" aria-label="Open WannaChat">
-          <img src="../../../assets/images/icons/dm.png" alt="" />
+          <img src="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/header-icons/dm.png" alt="" />
         </button>
 
       </div>
@@ -257,12 +241,12 @@
   <div id="dashIdRow" class="dash-id-row">
     <span class="dash-names">
       <span id="dashNickname" title="Your nickname">Guest</span>
-      <span id="dashUsername" title="Your username (on your ticket)"></span>
+      <span id="dashUsername" title="Your account username"></span>
     </span>
     <code id="dashTicketId" role="button" tabindex="0" hidden></code>
   </div>
-  <a href="#" id="openUpdates" title="See what's new">Updates &amp; changes</a>
-    <a href="../credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>
+  <a href="#" id="openUpdates" title="View project updates">Project updates</a>
+    <a href="system/pages/credits-n-achievements/index.html" target="_blank" id="openCredits" title="Your credits, achievements and early unlocks">Credits &amp; achievements</a>
   <a href="#" id="openRefer" title="Share WannaSmile with a friend">Refer a friend</a>
     <a href="#" id="openTour" title="Walk through the site again">Tutorial</a>
   <a href="#" id="clearData">Clear My Data</a>
@@ -293,14 +277,14 @@
 
 <footer class="footer">
   <div class="footer-links">
-    <a href="https://github.com/vvannazmile/vvannazmile.github.io" target="_blank" rel="noopener noreferrer">source</a>
-    <a href="../dmca/index.html" target="_blank">DMCA</a>
+    <a href="https://github.com/vvannazmile/vvannazmile.github.io" target="_blank" rel="noopener noreferrer">Source code</a>
+    <a href="system/pages/dmca/index.html" target="_blank">DMCA</a>
     <a href="https://discord.gg/6DxVZqKYtJ" target="_blank">Discord</a>
-    <a href="../download/index.html" target="_blank" data-ws-browser-only>Desktop app</a>
+    <a href="system/pages/download/index.html" target="_blank" data-ws-browser-only>Desktop app</a>
 <a href="#" id="importData">Import Data</a>
 <a href="#" id="exportData">Export Data</a>
 <a href="#" id="transData">Transfer Data</a>
-    <a href="#" id="footerVersion">WannaSmile4Evr</a>
+    <a href="#" id="footerVersion">Project version</a>
   </div>
 </footer>
 
@@ -319,58 +303,58 @@
 <div id="updatesOverlay" class="upd-overlay" role="dialog" aria-modal="true" aria-labelledby="updatesTitle" hidden>
   <div class="upd-backdrop" id="updatesBackdrop"></div>
   <div id="updatesPanel" tabindex="-1">
-    <img class="upd-banner" src="../../../assets/images/pages/release/wannasmile-updated-banner.png" alt="" />
-    <h2 class="upd-title" id="updatesTitle">Updates n changes!</h2>
+    <img class="upd-banner" src="assets/images/pages/release/wannasmile-updated-banner.png" alt="" />
+    <h2 class="upd-title" id="updatesTitle">Project updates</h2>
     <img class="upd-sticker" src="https://raw.githubusercontent.com/wannasmile4evr/mediabaseWS/main/stickers/MeltGui-pack/cheer.webp" alt="" />
     <ul class="upd-list">
-      <li>New DM system!</li>
-      <li>DM icon lights up when you have new messages</li>
-      <li>Assets re-added on library pages 11&ndash;15</li>
-      <li>Auto approve until 300 users!</li>
-      <li>Halloween & autumn expansion update along the way</li>
-      <li>Winter updates coming soon</li>
-      <li>end of wannasmile?</li>
-      <li>This pop-up now shows up with every new update</li>
+      <li>WannaChat now supports direct messages</li>
+      <li>Unread messages are indicated in the header</li>
+      <li>Library pages 11&ndash;15 have been refreshed</li>
+      <li>Account registration is available</li>
+      <li>Seasonal assets and interface updates</li>
+      <li>Additional project updates are in development</li>
+      <li>Development outlook</li>
+      <li>Project updates are announced when available</li>
     </ul>
     <div class="upd-actions">
       <button type="button" id="updatesDismiss" class="upd-btn upd-btn-ghost">Don't show again</button>
-      <button type="button" id="updatesReadMore" class="upd-btn upd-btn-primary">Tell me all about it!</button>
+      <button type="button" id="updatesReadMore" class="upd-btn upd-btn-primary">View all updates</button>
     </div>
   </div>
 </div>
 
-<script defer src="../../js/utils.js"></script>
-<script defer src="../../js/datacache.js"></script>
-<script defer src="../../js/paging.js"></script>
-<script defer src="../../js/ticket.js"></script>
-<script defer src="../../js/themify.js"></script>
-<script defer src="../../js/frames.js"></script>
-<script defer src="../../js/wrappers.js"></script>
-<script defer src="../../js/cursors.js"></script>
-<script defer src="../../js/sanitizer.js"></script>
-<script defer src="../../js/profile.js"></script>
-<script defer src="../../js/profile-modal.js"></script>
-<script defer src="../../js/msgcore.js"></script>
-<script defer src="../../js/settings.js"></script>
-<script defer src="../../js/ui.js"></script>
-<script defer src="../../js/stickers.js"></script>
-<script defer src="../../js/quotes.js"></script>
-<script defer src="../../js/main.js"></script>
-<script defer src="../../js/boom.js"></script>
-<script defer src="../../js/panic.js"></script>
-<script defer src="../../js/shortcuts.js"></script>
-<script defer src="../../js/widgets.js"></script>
-<script defer src="../../js/rusure.js"></script>
-<script defer src="../../js/vendor/qrcode.js"></script>
-<script defer src="../../js/refer.js"></script>
-<script defer src="../../js/updates.js"></script>
-<script defer src="../../js/data.js"></script>
-<script defer src="../../js/gridSettings.js"></script>
-<script defer src="../../js/credits.js"></script>
-<script defer src="../../js/devtools.js"></script>
-<script defer src="../../js/tutorial.js"></script>
-<script defer src="../../js/daily.js"></script>
-<script defer src="../../js/version.js"></script>
+<script defer src="system/js/utils.js"></script>
+<script defer src="system/js/datacache.js"></script>
+<script defer src="system/js/paging.js"></script>
+<script defer src="system/js/ticket.js"></script>
+<script defer src="system/js/themify.js"></script>
+<script defer src="system/js/frames.js"></script>
+<script defer src="system/js/wrappers.js"></script>
+<script defer src="system/js/cursors.js"></script>
+<script defer src="system/js/sanitizer.js"></script>
+<script defer src="system/js/profile.js"></script>
+<script defer src="system/js/profile-modal.js"></script>
+<script defer src="system/js/msgcore.js"></script>
+<script defer src="system/js/settings.js"></script>
+<script defer src="system/js/ui.js"></script>
+<script defer src="system/js/stickers.js"></script>
+<script defer src="system/js/quotes.js"></script>
+<script defer src="system/js/main.js"></script>
+<script defer src="system/js/boom.js"></script>
+<script defer src="system/js/panic.js"></script>
+<script defer src="system/js/shortcuts.js"></script>
+<script defer src="system/js/widgets.js"></script>
+<script defer src="system/js/rusure.js"></script>
+<script defer src="system/js/vendor/qrcode.js"></script>
+<script defer src="system/js/refer.js"></script>
+<script defer src="system/js/updates.js"></script>
+<script defer src="system/js/data.js"></script>
+<script defer src="system/js/gridSettings.js"></script>
+<script defer src="system/js/credits.js"></script>
+<script defer src="system/js/devtools.js"></script>
+<script defer src="system/js/tutorial.js"></script>
+<script defer src="system/js/daily.js"></script>
+<script defer src="system/js/version.js"></script>
 
 </body>
 </html>

@@ -1,8 +1,9 @@
 "use strict";
 
-// QRWS is fetched only on demand so the ticket gate has already settled.
+// The link list (system/json/refer.json) is fetched only on demand so the ticket gate has already settled.
 (() => {
   const CACHE_KEY = "ws_qr_cache";
+  const REFER_URL = new URL("../json/refer.json", document.currentScript?.src || location.href);
   const NS = "http://www.w3.org/2000/svg";
   let overlay = null;
   let urls = [];
@@ -264,14 +265,12 @@
       await window.WS_Ticket?.ready;
       if (overlay !== current) return;
       if (window.WS_Ticket && !window.WS_Ticket.approved()) throw new Error("Ticket is not approved.");
-      const base = window.WS_ENDPOINTS?.data;
-      if (!base || typeof window.bustCache !== "function") throw new Error("QR feed is unavailable.");
-      const response = await fetch(window.bustCache(`${base}?type=qr`), { cache: "no-store" });
+      const response = await fetch(REFER_URL, { cache: "no-cache" });
       if (overlay !== current) return;
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
-      if (!json || json.error) throw new Error(json?.error || "QR feed is unavailable.");
-      const list = cleanURLs(Object.values(json).find(Array.isArray) || []);
+      if (!json || json.error) throw new Error(json?.error || "Link list is unavailable.");
+      const list = cleanURLs(Array.isArray(json) ? json : (Array.isArray(json.urls) ? json.urls : []));
       urls = list;
       codes = buildCodes(list);
       saveCache(list);

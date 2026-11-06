@@ -1,6 +1,8 @@
 "use strict";
 
-const WS_SETTINGS_ASSET_BASE = new URL("../../assets/images/cloak-btn/", document.currentScript?.src || location.href);
+const WS_CLOAKS_URL = new URL("../json/cloaks.json", document.currentScript?.src || location.href);
+
+const WS_SETTINGS_ASSET_BASE = new URL("https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/cloak-btn/", document.currentScript?.src || location.href);
 
 const _REAL_TITLE   = (function() {
 
@@ -53,17 +55,35 @@ function _removeCloak() {
   setTimeout(() => { document.title = _REAL_TITLE; }, 0);
 }
 
+let _cloakCatalog = null;
+function loadCloaks() {
+  if (!_cloakCatalog) {
+    _cloakCatalog = fetch(WS_CLOAKS_URL, { cache: "no-cache" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("cloaks.json " + r.status))))
+      .then((rows) => (Array.isArray(rows) ? rows : [])
+        .filter((c) => c && c.id && c.title)
+        .map((c) => ({ id: String(c.id), title: String(c.title), icon: String(c.icon || ""), metadata: c.metadata || {} })))
+      .catch((err) => { console.warn("[cloaks] load failed:", err); return []; });
+  }
+  return _cloakCatalog;
+}
+
 function toggleCloak() {
   const nowOn = !isCloakOn();
   localStorage.setItem("cloakEnabled", String(nowOn));
 
   if (nowOn) {
+    const finish = () => { applyCloak(); showToast("🔒 Cloak ON"); };
     if (!localStorage.getItem("cloakTitle")) {
-      localStorage.setItem("cloakTitle", "Google");
-      localStorage.setItem("cloakIcon",  "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Google_Favicon_2025.svg/3840px-Google_Favicon_2025.svg.png");
-    }
-    applyCloak();
-    showToast("🔒 Cloak ON");
+      loadCloaks().then((list) => {
+        const d = list.find((c) => c.id === "google") || list[0];
+        if (d && !localStorage.getItem("cloakTitle")) {
+          localStorage.setItem("cloakTitle", d.title);
+          localStorage.setItem("cloakIcon", d.icon);
+        }
+        if (isCloakOn()) finish();
+      });
+    } else finish();
   } else {
     _removeCloak();
     showToast("🔓 Cloak OFF");
@@ -126,16 +146,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (webiconInput) webiconInput.value = localStorage.getItem("cloakIcon")  || "";
   if (panicInput)   panicInput.value   = localStorage.getItem("panicURL")   || "";
 
-  const CLOAK_PRESETS = {
-    google:    { title: "Google",                           icon: "https://ws.ankomstudios.com/cloaks/google.png"    },
-    drive:     { title: "My Drive - Google Drive",          icon: "https://ws.ankomstudios.com/cloaks/drive.png"     },
-    classroom: { title: "Classes",                          icon: "https://ws.ankomstudios.com/cloaks/classroom.png" },
-    newtab:    { title: "New Tab",                          icon: "https://ws.ankomstudios.com/cloaks/newtab.png"    },
-    docs:      { title: "Untitled document - Google Docs",  icon: "https://ws.ankomstudios.com/cloaks/docs.png"      },
-    schoology: { title: "Schoology",                        icon: "https://ws.ankomstudios.com/cloaks/schoology.png" },
-    outlook:   { title: "Outlook – Mail",                   icon: "https://ws.ankomstudios.com/cloaks/outlook.png"   },
-    canvas:    { title: "Dashboard – Canvas",               icon: "https://ws.ankomstudios.com/cloaks/canvas.png"    },
-  };
+  let CLOAK_PRESETS = {};
+  loadCloaks().then((list) => {
+    CLOAK_PRESETS = Object.fromEntries(list.map((c) => [c.id, c]));
+    if (!presetCloakSel) return;
+    const have = new Set([...presetCloakSel.options].map((o) => o.value));
+    list.forEach((c) => {
+      if (have.has(c.id)) return;
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.title;
+      presetCloakSel.append(opt);
+    });
+  });
 
   presetCloakSel?.addEventListener("change", () => {
     const p = CLOAK_PRESETS[presetCloakSel.value];

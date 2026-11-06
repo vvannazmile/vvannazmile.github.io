@@ -444,15 +444,20 @@ code{padding:0 4px;border-radius:4px;background:rgba(255,255,255,.1);font-size:1
 @keyframes pfEditorIn{from{opacity:0;transform:translateX(-28px) scale(.97)}}
 @media (max-width:760px){
   :root.profile-embedded[data-pf-stage="edit"] #profileEditor,
-  :root.profile-embedded[data-pf-stage="edit"] #profileEditor[data-profile-align]{grid-template-columns:minmax(0,1fr);grid-template-areas:"style" "preview";grid-template-rows:minmax(260px,45%) minmax(0,1fr)}
+  :root.profile-embedded[data-pf-stage="edit"] #profileEditor[data-profile-align]{grid-template-columns:minmax(0,1fr);grid-template-areas:"style" "preview";grid-template-rows:minmax(0,42fr) minmax(0,58fr)}
+  :root.profile-embedded[data-pf-stage="edit"] #editSidebar{min-height:0;border-radius:12px}
+  :root.profile-embedded[data-pf-stage="edit"] main{min-width:0;min-height:0;padding:8px;overflow:auto}
+  :root.profile-embedded[data-pf-stage="edit"] #previewShell{row-gap:12px;margin-block:auto}
 }
 @media (prefers-reduced-motion:reduce){:root.profile-embedded[data-pf-stage="edit"] #editSidebar{animation:none}}
-:root.profile-embedded #profileEditor{height:100%;min-height:0}
-:root.profile-embedded body,:root.profile-embedded html{height:100%}
+:root.profile-embedded #profileEditor{height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;min-height:0}
+:root.profile-embedded body,:root.profile-embedded html{height:100%;min-height:0;overflow:hidden}
 :root.profile-embedded #editSidebar{align-self:stretch;max-height:100%;min-height:0}
+:root.profile-embedded main{min-height:0;max-height:100%;overscroll-behavior:contain}
 :root.profile-embedded #profileActions .profile-action{display:none}
 :root.profile-embedded[data-pf-stage="view"] #addRoleButton,
 :root.profile-embedded[data-pf-stage="view"] #roleComposer,
 :root.profile-embedded[data-pf-stage="view"] .profile-role-list button{display:none!important}
 :root.profile-embedded #editSidebar{display:flex;flex-direction:column}
-:root.profile-embedded #editHome,:root.profile-embedded #editPane{flex:1 1 0;height:auto;min-height:0;max-height:none}
+:root.profile-embedded #editHome,:root.profile-embedded #editPane{flex:1 1 0%;height:auto;min-height:0;max-height:none;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+:root.profile-embedded main{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

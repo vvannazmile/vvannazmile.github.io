@@ -1,6 +1,7 @@
 "use strict";
 
-const WS_MAIN_ASSET_ROOT = new URL("../../assets/", document.currentScript?.src || location.href);
+const WS_MAIN_ASSET_ROOT = new URL("https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/");
+const WS_SEARCH_QUERY_URL = new URL("../json/search-query.json", document.currentScript?.src || location.href);
 
 (function initScrollPersistence() {
   const saveScroll = debounce(() => {
@@ -2183,7 +2184,7 @@ window.addEventListener("load", () => {
 
       if (typeSet.has("grail")) {
         const grailEl = document.createElement("img");
-        grailEl.src = new URL("images/type-overlayStyles/grail.png", WS_MAIN_ASSET_ROOT).href;
+        grailEl.src = new URL("overlay-styles/grail.png", WS_MAIN_ASSET_ROOT).href;
         grailEl.alt = "";
         grailEl.className = "grail-bg";
         wrapper.insertBefore(grailEl, wrapper.firstChild);
@@ -2218,7 +2219,7 @@ window.addEventListener("load", () => {
         const isDmca    = typeSet.has("dmca") || statusSet.has("dmca");
         const isBlocked = typeSet.has("blocked") || statusSet.has("blocked");
         if (isDmca || isBlocked) {
-          img.src = new URL("images/placeholders/cooked.png", WS_MAIN_ASSET_ROOT).href;
+          img.src = "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/placeholders/cooked.png";
           img.style.imageRendering = "pixelated";
         }
         card.classList.add("cooked");
@@ -3078,37 +3079,20 @@ window.addEventListener("load", () => {
   let _searchQuotes     = null;
   let _searchQuotesIdx  = 0;
 
-  // Served by the same QuoteSystemWS sheet as the main quote box (column A) —
-  // column B is the dedicated search-placeholder list, B1 header / B2:B... data.
-  // With the data cache on, the saved list is used and only an R refetch
-  // (ws:refetch) goes back to DATA for a fresh one.
-  async function _loadSearchQuotes(force = false) {
-    if (_searchQuotes !== null && !force) return _searchQuotes;
-    const cache = window.WS_DataCache;
-    if (!force && cache?.enabled()) {
-      const saved = await cache.read("searchquotes");
-      if (Array.isArray(saved)) return (_searchQuotes = saved);
-    }
-    if (!window.WS_Ticket?.approved?.() || !window.WS_ENDPOINTS?.data) return (_searchQuotes = []);
+  // Search placeholder phrases are maintained in system/json/search-query.json.
+  async function _loadSearchQuotes() {
+    if (_searchQuotes !== null) return _searchQuotes;
     try {
-      const url = `${window.WS_ENDPOINTS.data}?type=searchQuotes`;
-      await ticketReady();
-      const data = await fetchJSONRetry(() => bustCache(url));
-      const values = data && typeof data === "object" && !Array.isArray(data)
-        ? Object.values(data)[0]
-        : null;
-      _searchQuotes = Array.isArray(values)
-        ? values.filter(q => typeof q === "string" && q.trim())
-        : [];
-      if (_searchQuotes.length && cache?.enabled()) cache.write("searchquotes", _searchQuotes);
-    } catch {
-      if (_searchQuotes === null) _searchQuotes = [];
+      const data = await fetchJSONRetry(() => WS_SEARCH_QUERY_URL.href);
+      const values = Array.isArray(data) ? data : data?.queries;
+      if (!Array.isArray(values)) throw new Error("search-query.json must contain a queries array.");
+      _searchQuotes = values.filter(q => typeof q === "string" && q.trim());
+    } catch (error) {
+      console.error("[SearchQuotes] Failed to load local search-query.json:", error);
+      _searchQuotes = [];
     }
     return _searchQuotes;
   }
-  document.addEventListener("ws:refetch", () => {
-    if (window.WS_DataCache?.enabled()) _loadSearchQuotes(true);
-  });
 
   function _nextSearchQuote() {
     if (!_searchQuotes || !_searchQuotes.length) return "Search assets...";
@@ -3514,7 +3498,7 @@ window.addEventListener("load", () => {
 
   window._reloading           = false;
   window._reloadCooldownUntil = 0;
-  const RELOAD_COOLDOWN_MS    = 15000;
+  const RELOAD_COOLDOWN_MS    = 30000;
 
   // ── Worker rebuild (R shortcut) ──────────────────────────────────────
   // The Worker re-exports the library JSON every 3 hours on its own. R asks it
@@ -3543,25 +3527,38 @@ window.addEventListener("load", () => {
       const calls = _rebuildCalls();
       return calls.length < REBUILD_CAP ? 0 : Math.max(0, calls[0] + REBUILD_WINDOW_MS - Date.now());
     },
-    // -> { status: "rebuilt" | "capped" | "failed" | "disabled", remaining }
+    // -> { status: "rebuilt" | "capped" | "failed" | "disabled", remaining, detail }
+    // A slot is only spent when the Worker actually took the request: a missing
+    // route (404/405/501) or no connection hands the slot back, so a broken
+    // endpoint can't use up the day's 15.
     async request() {
       const url = window.WS_ENDPOINTS?.rebuild;
-      if (!url) return { status: "disabled", remaining: this.remaining() };
+      if (!url) return { status: "disabled", remaining: this.remaining(), detail: "no rebuild endpoint set" };
       const calls = _rebuildCalls();
-      if (calls.length >= REBUILD_CAP) return { status: "capped", remaining: 0 };
-      // Counted when sent, so a failing Worker can't be hammered either.
-      calls.push(Date.now());
+      if (calls.length >= REBUILD_CAP) return { status: "capped", remaining: 0, detail: "local limit" };
+      const stamp = Date.now();
+      calls.push(stamp);
       _saveRebuildCalls(calls);
-      const remaining = Math.max(0, REBUILD_CAP - calls.length);
+      const refund = () => _saveRebuildCalls(_rebuildCalls().filter(t => t !== stamp));
+      const left = () => Math.max(0, REBUILD_CAP - _rebuildCalls().length);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), REBUILD_TIMEOUT);
       try {
         const res = await fetch(url, { method: "POST", cache: "no-store", signal: controller.signal });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return { status: "rebuilt", remaining };
+        if (res.ok) return { status: "rebuilt", remaining: left(), detail: "HTTP " + res.status };
+        if (res.status === 429) return { status: "capped", remaining: 0, detail: "Worker says too many rebuilds" };
+        if ([404, 405, 501].includes(res.status)) {
+          refund();
+          return { status: "failed", remaining: left(), detail: `HTTP ${res.status}: the Worker has no rebuild route yet` };
+        }
+        // 401/403 (route refuses us) and 5xx (Worker failed) did no rebuild: hand the slot back.
+        if (res.status === 401 || res.status === 403 || res.status >= 500) refund();
+        return { status: "failed", remaining: left(), detail: "HTTP " + res.status };
       } catch (err) {
         console.error("[Worker rebuild]", err);
-        return { status: "failed", remaining };
+        refund();
+        return { status: "failed", remaining: left(),
+          detail: err?.name === "AbortError" ? "timed out" : "blocked or unreachable (CORS or network)" };
       } finally { clearTimeout(timer); }
     },
   };
@@ -3597,8 +3594,7 @@ window.addEventListener("load", () => {
     window._sheetDataReady = Promise.resolve();
     _resolveSheetData = () => {};
 
-    // R always goes to DATA, data cache or not; the quote box and search
-    // quotes refresh their saved copies on this too.
+    // R rebuilds the public library snapshot and reloads the library.
     window._forceRefetch = true;
     document.dispatchEvent(new CustomEvent("ws:refetch"));
 

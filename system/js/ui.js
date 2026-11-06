@@ -1,5 +1,7 @@
 "use strict";
 
+const WS_UI_SCRIPT_SRC = document.currentScript?.src || location.href;
+
 // Same key themify.js declares as THEME_SHORTCUT_KEY — not reusing that
 // name here since both files run as top-level classic scripts sharing one
 // global scope, and a second `const` with the same name throws.
@@ -155,7 +157,8 @@ document.addEventListener("keydown", (e) => {
           showToast(
             r.status === "rebuilt" ? `Library rebuilt! ${r.remaining} of ${window.WS_Rebuild.cap} rebuilds left today.`
             : r.status === "capped" ? `Rebuild limit reached (${window.WS_Rebuild.cap}/24h). Next one in ~${mins} min; refetched the current list.`
-            : r.status === "failed" ? "Worker rebuild failed; refetched the current list."
+            : r.status === "failed" ? `Worker rebuild failed (${r.detail || "unknown"}); refetched the current list.`
+            : r.status === "disabled" ? `Rebuild off (${r.detail}); refetched the current list.`
             : "Assets reloaded!", 4200);
         })
         .catch(() => showToast("Reload failed — check connection."));
@@ -241,8 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (popup) {
     closeBtn?.addEventListener("click", closePopup);
     dontShowBtn?.addEventListener("click", () => {
-      const version = document.getElementById("footerVersion")
-        ?.textContent?.replace("Version ", "").trim() || "v0.8";
+      const version = window.WS_FOOTER_VERSION || "v0.8";
       localStorage.setItem("dismissedUpdateVersion", version);
       closePopup();
     });
@@ -250,18 +252,20 @@ document.addEventListener("DOMContentLoaded", () => {
     viewInfoBtn?.addEventListener("click",   () => window.open("update-info.html", "_blank"));
   }
 
-  // Appends "(shortSha)" to the footer label and links it to that commit.
-  (function loadLatestCommitLabel() {
+  // Footer label comes from system/json/footer-version.json: "Title (version)".
+  (function loadFooterVersion() {
     const el = document.getElementById("footerVersion");
     if (!el) return;
-    const baseLabel = el.textContent.trim();
-    window.WS_LatestCommit().then((c) => {
-      if (!c) return;
-      el.textContent = `${baseLabel} (${c.sha.slice(0, 7)})`;
-      el.href   = c.htmlUrl;
-      el.target = "_blank";
-      el.rel    = "noopener noreferrer";
-    });
+    el.addEventListener("click", (e) => e.preventDefault());
+    const url = new URL("../json/footer-version.json", document.currentScript?.src || WS_UI_SCRIPT_SRC);
+    fetch(url, { cache: "no-cache" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("footer-version.json " + r.status))))
+      .then((v) => {
+        if (!v || !v.title || !v.version) return;
+        window.WS_FOOTER_VERSION = String(v.version);
+        el.textContent = `${v.title} (${v.version})`;
+      })
+      .catch((err) => console.warn("[footer-version] load failed:", err));
   })();
 
   if (dashboardBtn && dashboardMenu) {

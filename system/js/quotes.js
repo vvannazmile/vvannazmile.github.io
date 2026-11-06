@@ -1,6 +1,7 @@
 "use strict";
 
-const WS_QTYPE_ICON_BASE = new URL("../../assets/images/qtypes-btn/", document.currentScript?.src || location.href);
+const WS_QTYPE_ICON_BASE = new URL("https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/qtype/", document.currentScript?.src || location.href);
+const WS_QUOTES_URL = new URL("../json/quotes.json", document.currentScript?.src || location.href);
 
 (function injectQuoteStyles() {
   if (document.getElementById("_qs-styles")) return;
@@ -365,13 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const box     = document.getElementById("quoteBox");
   if (!wrapper || !box) return;
 
-  const SHEETS_URL = `${window.WS_ENDPOINTS.data}?type=quotes`;   // endpoints.js
-
-
   let LOCAL_QUOTES  = [];
-  let seenIndices   = new Set();
-  let pendingQuotes = null;
-  let fetchInFlight = false;
 
   const QTYPES      = ["Qleft", "Qright", "Qrefresh"];
   const QTYPE_ICONS = {
@@ -450,17 +445,11 @@ document.addEventListener("DOMContentLoaded", () => {
   applyQtypeIcon();
 
 function parseQuotes(data) {
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    return null;
-  }
-
-  const keys = Object.keys(data);
-  if (keys.length !== 1) {
-    return null;
-  }
-
-  const values = data[keys[0]];
-
+  const values = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && Array.isArray(data.quotes)
+      ? data.quotes
+      : null;
   if (!Array.isArray(values)) {
     return null;
   }
@@ -471,25 +460,6 @@ function parseQuotes(data) {
 
   return result.length > 0 ? result : null;
 }
-
-  // Data cache (datacache.js): while it's on, quotes come from the saved
-  // copy and only an R refetch (`force`) goes back to DATA.
-  const cacheOn = () => !!window.WS_DataCache?.enabled();
-
-  function backgroundRefetch(force = false) {
-    if (!window.WS_ENDPOINTS?.data || fetchInFlight || (cacheOn() && !force)) return;
-    fetchInFlight = true;
-    ticketReady()
-      .then(() => fetchJSONRetry(() => bustCache(SHEETS_URL)))
-      .then(data => {
-        const fresh = parseQuotes(data);
-        if (!fresh) return;
-        pendingQuotes = fresh;
-        if (cacheOn()) window.WS_DataCache.write("quotes", data);
-      })
-      .catch((err) => { console.error("[Quotes] Background refetch failed:", err); })
-      .finally(() => { fetchInFlight = false; });
-  }
 
   let _audCtx     = null;
   let _audSource   = null;
@@ -686,9 +656,7 @@ function parseQuotes(data) {
   let _quoteReady = true;
   let _readyToken = 0;   // only the latest quote's wait may start it moving
 
-  // A random quote that isn't the one showing (same index, or same text
-  // after the list was swapped for a fresh copy), for every mode, so each
-  // switch really shows something new. Counts toward the refetch cycle.
+  // A random quote that isn't the one showing, for every mode.
   function pickQuote() {
     let idx = 0;
     if (LOCAL_QUOTES.length > 1) {
@@ -698,23 +666,11 @@ function parseQuotes(data) {
       }
     }
     lastIdx = idx;
-    seenIndices.add(idx);
-    if (seenIndices.size >= LOCAL_QUOTES.length) {
-      seenIndices.clear();
-      backgroundRefetch();
-    }
     return LOCAL_QUOTES[idx];
   }
 
   const setQuote = () => {
     stopAudio();
-
-    if (pendingQuotes) {
-      LOCAL_QUOTES = pendingQuotes;
-      pendingQuotes = null;
-      seenIndices.clear();
-      lastIdx = -1;
-    }
 
     let quoteText;
 
@@ -783,26 +739,17 @@ function parseQuotes(data) {
   wrapper.addEventListener("mousedown",   () => { isMouseDown    = true;  updateSpeed(); });
   document.addEventListener("mouseup",    () => { if (!isMouseDown) return; isMouseDown = false; updateSpeed(); });
 
-  document.addEventListener("ws:refetch", () => { if (cacheOn()) backgroundRefetch(true); });
-
   (async () => {
     let data = null;
-
-    // Saved copy first when the data cache is on.
-    if (cacheOn()) data = await window.WS_DataCache.read("quotes");
-
-    if (!parseQuotes(data)) try {
-      await ticketReady();
-      data = await fetchJSONRetry(() => bustCache(SHEETS_URL));
-      if (cacheOn() && parseQuotes(data)) window.WS_DataCache.write("quotes", data);
+    try {
+      data = await fetchJSONRetry(() => WS_QUOTES_URL.href);
     } catch (err) {
-      console.error("[Quotes] Failed to fetch or parse the quotes sheet response:", err);
-      data = null;
+      console.error("[Quotes] Failed to fetch the local quotes JSON:", err);
     }
 
     const initial = parseQuotes(data);
     if (!initial) {
-      console.error("[Quotes] Sheet responded, but no usable quotes came out of parseQuotes(). Raw response was:", data);
+      console.error("[Quotes] The local quotes JSON contains no usable quotes:", data);
     }
     LOCAL_QUOTES  = initial || ["404 quotes not found."];
     setQuote();

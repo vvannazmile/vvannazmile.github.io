@@ -13,6 +13,9 @@
 window.WS_ENDPOINTS = Object.freeze({
   data: "",
   mod: "",
+  // WannaChat runs on its dedicated Cloudflare Worker. Do not route chat
+  // traffic through data, which remains disabled for other legacy services.
+  chat: "https://global-chat.ankomstudios.workers.dev",
   // Public SQL (D1) library used for the homepage and DevBuild assets.
   // One exported JSON file ({ updated, items }) rebuilt by the ankom-api Worker
   // from D1. The endpoint versions its edge cache against the R2 object ETag.
@@ -73,9 +76,8 @@ window.WS_LocalCatalogs = (() => {
   return Object.freeze({ load });
 })();
 
-// The public SQL library is open; this development build does not gate it on
-// the disabled ticket service.
-window.WS_TICKETS_ENABLED = false;
+// Account setup is required before using chat; public site content stays open.
+window.WS_ACCOUNTS_ENABLED = true;
 
 // ── General media (mediabaseWS) ────────────────────────────────────────
 // Banners, profile pics, stickers and theme art live in their own repo,

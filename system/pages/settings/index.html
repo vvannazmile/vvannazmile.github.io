@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script src="../../js/desktop.js"></script>
-<link id="favicon" rel="icon" href="https://ws.ankomstudios.com/favicons/favicon.png" />
-<title>Settings · WannaSmile4Evr</title>
+<link id="favicon" rel="icon" type="image/png" href="https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/favicons/ico.png" />
+<title>WannaSmile | Settings</title>
 
 <style>
 /* Same family as the Store (store.html): tilted panels with offset accent
@@ -314,7 +314,7 @@ kbd {
 <body>
 <div class="wrap">
   <div class="top">
-    <a class="back" href="../index/index.html">← Back to WannaSmile</a>
+    <a class="back" href="../../../">← Back to WannaSmile</a>
     <div class="title">
       <h1>Settings</h1>
       <p class="tagline">Site-wide changes, saved in this browser. <span class="chip" id="systemChip">System 1 of 8</span></p>
@@ -441,7 +441,7 @@ kbd {
       options: [[false, "Off"], [true, "On"]] },
     // Not a paging option: stays usable while pageless.
     { key: "cache", name: "Data cache", pagelessOk: true,
-      desc: "On saves the library, quotes and search quotes after one fetch and loads from that copy from then on: no waiting on the server. Press R on the site whenever you want fresh data. Off deletes the copy.",
+      desc: "On saves the library after one fetch and loads from that copy from then on: no waiting on the server. Press R on the site whenever you want a fresh copy. Quotes load from local JSON files. Off deletes the library copy.",
       options: [[false, "Off"], [true, "On"]] },
   ];
 

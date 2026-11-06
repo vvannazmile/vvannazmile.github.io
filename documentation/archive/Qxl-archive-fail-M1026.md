@@ -1,1 +1,0 @@
-quotes have been deleted, no archive here!

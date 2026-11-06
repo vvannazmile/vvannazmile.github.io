@@ -200,7 +200,7 @@ const showToast = window.showToast;
 // ── Latest commit of the live repo ─────────────────────────────────────
 // window.WS_LatestCommit() -> Promise of { sha, htmlUrl } for the newest
 // main-branch commit, or null if it can't be reached. One lookup per page,
-// shared by the footer label (ui.js), the "Updates & changes" modal
+// shared by the footer label (ui.js), the project updates notice
 // (updates.js) and the news page. Cached in sessionStorage for 5 minutes so
 // moving between pages doesn't hit the GitHub API's unauthenticated rate limit.
 (() => {

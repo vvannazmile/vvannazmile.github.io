@@ -8,11 +8,11 @@ if (EMBEDDED_PROFILE) {
 const KEY = EMBEDDED_PROFILE ? "ws_profile_style_modal_draft" : "ws_profile_style_test";
 const MAIN_PROFILE_KEY = "ws_profile_style_main";
 const HOST_ORIGIN = location.origin === "null" ? "*" : location.origin;
-const PROFILE_IMAGE_DIR = "../../../assets/images/";
-const PROFILE_PLACEHOLDER = `${PROFILE_IMAGE_DIR}placeholder-profile.jpg`;
+const PROFILE_IMAGE_DIR = "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/";
+const PROFILE_PLACEHOLDER = `${PROFILE_IMAGE_DIR}placeholders/profile.png`;
 const LOCAL_FRAME_MEDIA = [
-  { label: "Bloody", url: `${PROFILE_IMAGE_DIR}bloody.png`, scale: 120 },
-  { label: "Flowers", url: `${PROFILE_IMAGE_DIR}flowers.png`, scale: 120 }
+  { label: "Bloody", url: `${PROFILE_IMAGE_DIR}frames/bloody.png`, scale: 120 },
+  { label: "Flowers", url: `${PROFILE_IMAGE_DIR}frames/flowers.png`, scale: 120 }
 ];
 const PRESET_MEDIA = {
   avatar: [
@@ -52,8 +52,8 @@ const FALLBACK_ACH = {
 };
 const $ = (id) => document.getElementById(id);
 const DIVIDER_ASSETS = {
-  drip: "../../../assets/images/dripping-paint.png",
-  xmaslights: "../../../assets/images/xmaslights.png"
+  drip: "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/dividers/dripping-paint.png",
+  xmaslights: "https://raw.githubusercontent.com/securlydetected/assets/refs/heads/main/dividers/xmaslights.png"
 };
 const bannerImageSizes = new Map();
 const ls = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
@@ -845,14 +845,16 @@ function bindProfilePreview() {
       try { window.parent.postMessage({ type, ...(extra || {}) }, HOST_ORIGIN); } catch (_) {}
     };
     let stage = "";
-    let lastHeight = 0;
+    let lastHeight = 0, lastWidth = 0;
     const reportSize = () => {
       const editing = stage === "edit";
       const wanted = Math.ceil(shell.offsetHeight + 48);
-      const height = editing ? Math.max(wanted, 560) : wanted;
-      if (height === lastHeight) return;
+      const height = editing ? window.innerHeight : wanted;
+      const width = window.innerWidth;
+      if (height === lastHeight && width === lastWidth) return;
       lastHeight = height;
-      toHost("ws-profile-modal-size", { height, stage });
+      lastWidth = width;
+      toHost("ws-profile-modal-size", { height, width, stage });
     };
     const applyStage = (next) => {
       next = next === "edit" ? "edit" : "view";
@@ -865,14 +867,23 @@ function bindProfilePreview() {
     };
     const initialStage = new URLSearchParams(location.search).get("stage") === "edit" ? "edit" : "view";
     root.dataset.pfStage = initialStage;
-    if (typeof ResizeObserver === "function") new ResizeObserver(reportSize).observe(shell);
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(reportSize).observe(shell);
+      new ResizeObserver(reportSize).observe(document.documentElement);
+    }
+    window.addEventListener("resize", reportSize);
     window.addEventListener("message", (event) => {
       if (event.source !== window.parent) return;
       const data = event.data || {};
       if (data.type === "ws-profile-modal-stage") applyStage(data.stage);
       else if (data.type === "ws-profile-modal-action" && data.action === "save") saveToMainProfile();
     });
-    window.addEventListener("load", () => { applyStage(initialStage); reportSize(); toHost("ws-profile-modal-ready", { stage }); });
+    window.addEventListener("load", () => {
+      applyStage(initialStage);
+      reportSize();
+      toHost("ws-profile-modal-effects", { effect: S.fx_t, count: S.fx_n });
+      toHost("ws-profile-modal-ready", { stage });
+    });
   }
   $("saveMainProfileButton").addEventListener("click", saveToMainProfile);
   $("disregardProfileButton").addEventListener("click", () => {
@@ -1059,6 +1070,9 @@ let fxRaf = 0, parts = [];
 function startFx() {
   cancelAnimationFrame(fxRaf);
   const cv = $("fx"), ctx = cv.getContext("2d");
+  if (EMBEDDED_PROFILE) {
+    window.parent.postMessage({ type: "ws-profile-modal-effects", effect: S.fx_t, count: S.fx_n }, HOST_ORIGIN);
+  }
   const w = cv.width = cv.clientWidth, h = cv.height = cv.clientHeight;
   ctx.clearRect(0, 0, w, h);
   if (S.fx_t === "none" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;

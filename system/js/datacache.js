@@ -1,16 +1,13 @@
 "use strict";
 
 // ── Data cache (Settings → Page behaviour → Data cache) ────────────────
-// Off by default. When on, the main page fetches from DATA (data.gs) once,
-// saves what came back, and builds every later load from that saved copy
-// without contacting DATA at all, until the user presses R to refetch
-// (which refreshes the copy too).
+// Off by default. When on, the main page saves the public library data and
+// builds later loads from that saved copy until the user presses R to refetch.
 //
-// Covered feeds (one localStorage key each):
+// Covered feed (one localStorage key):
 //   ws_cache_assets        the asset list (main.js loadAssets)
-//   ws_cache_quotes        the quote box (quotes.js)
-//   ws_cache_searchquotes  the search-box quotes (main.js)
-// Turning the cache off deletes them; Clear My Data does too.
+// Quote lists are static JSON files and aren't copied into localStorage.
+// Turning the cache off deletes its copy; Clear My Data does too.
 //
 // Each copy is plain text: "WSC1:" + base64( deflate( JSON ) ), or
 // "WSJ1:" + JSON where the browser can't compress. Before it's turned into
@@ -26,7 +23,8 @@
 (() => {
   const ON_KEY    = "ws_data_cache_on";
   const PREFIX    = "ws_cache_";
-  const NAMES     = ["assets", "quotes", "searchquotes"];
+  const NAMES     = ["assets"];
+  const LEGACY_NAMES = ["quotes", "searchquotes"];
   const MAX_CHARS = 2500000;   // per copy, well under the ~5M localStorage allows in total
 
   const canCompress = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
@@ -127,7 +125,7 @@
   }
 
   function clear() {
-    NAMES.forEach((n) => { try { localStorage.removeItem(PREFIX + n); } catch (_) {} });
+    [...NAMES, ...LEGACY_NAMES].forEach((n) => { try { localStorage.removeItem(PREFIX + n); } catch (_) {} });
     document.dispatchEvent(new CustomEvent("ws:data-cache-change"));
   }
 

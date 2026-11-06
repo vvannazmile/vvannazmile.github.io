@@ -210,6 +210,8 @@ body.ws-pageless .pages-anchor .arrowright { display: none; }
 }
 .pfp-wrap:hover { transform: scale(1.1); }
 .pfp-wrap #pfp { position: relative; z-index: 1; transform: none; }
+.pfp-wrap .pf-frame { visibility: hidden; }
+body.profile-modal-open .pfp-wrap .pf-frame { visibility: visible; }
 
 #dashboardBtn {
   width: 20px;
